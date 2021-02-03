@@ -2,6 +2,18 @@ REM strava_pkg.sql
 rollback;
 connect strava/strava@oracle_pdb
 
+insert into user_sdo_geom_metadata (table_name,column_name,diminfo,srid)
+values ( 
+  'ACTIVITIES' , 
+  'STRAVA_PKG.MAKE_POINT(LNG,LAT)',
+  sdo_dim_array(
+    sdo_dim_element('Longitude',-180,180,0.05), 
+    sdo_dim_element('Latgitude',-90,90,0.05)
+  ),
+  4326
+);
+commit;
+
 ----------------------------------------------------------------------------------------------------
 create or replace package strava_pkg as 
 procedure create_activity_segs
@@ -56,7 +68,9 @@ BEGIN
 INSERT INTO activity_segs (activity_id, area_code3, number3, geom_length)
 WITH a AS (
 SELECT a.activity_id, g.area_code3, g.number3
-,      strava_fn.geom_length(g.geom, a.geom, g.geom_27700, a.geom_27700) geom_length
+--,      strava_fn.geom_length(g.geom, a.geom, g.geom_27700, a.geom_27700) geom_length
+,      NVL(sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(a.geom,m.geom,25), unit=>'unit=km')
+          ,sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(a.geom_27700,m.geom_27700,25), unit=>'unit=km'))
 FROM   activities a
 ,      my_areas g
 WHERE  a.activity_id = p_activity_id
@@ -124,7 +138,7 @@ BEGIN
   v_filename  := REGEXP_SUBSTR(p_filename,'[^\/]+',1,2);
   v_directory := REGEXP_SUBSTR(p_filename,'[^\/]+',1,1);
 
-  IF v_directory IS NOT NULL and v_filename IS NULL THEN
+  IF v_directory IS NOT NULL and v_filename IS NULL THEN /*if only one parameters then it is actually a filename*/
     v_filename := v_directory;
     v_directory := '';
   END IF;

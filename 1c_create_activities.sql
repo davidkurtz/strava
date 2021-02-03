@@ -74,4 +74,10 @@ ALTER TABLE ACTIVITIES MODIFY ACTIVITY_TYPE VARCHAR2(15);
 ALTER TABLE activities ADD (gpx XMLTYPE)
 XMLTYPE COLUMN gpx STORE AS SECUREFILE BINARY XML (CACHE DISABLE STORAGE IN ROW);
 
+ALTER TABLE activities ADD (geom mdsys.sdo_geometry));
+ALTER TABLE activities ADD (geom_27700 mdsys.sdo_geometry));
+ALTER TABLE activities ADD (mbr mdsys.sdo_geometry));
+ALTER TABLE activities ADD (xmlns VARCHAR2(128));
+ALTER TABLE activities ADD (num_pts INTEGER DEFAULT 0);
+
 spool off
