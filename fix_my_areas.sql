@@ -38,6 +38,29 @@ where num_pts > 10000
 and num_pts>100*distance_km
 /
 
+--REM simplify activities with >300 pts/km and >1000 points to reduce processing time
+update activities
+set geom       = sdo_util.simplify(geom,1)
+,   geom_27700 = sdo_util.simplify(geom_27700,1)
+,   num_pts    = sdo_util.getnumvertices(sdo_util.simplify(geom,1))
+where num_pts > 1000
+and num_pts>300*distance_km
+/
+
+column activity_name format a40
+column ppkm format 9999
+select activity_id, activity_date, activity_name, distance_km, num_pts, num_pts/distance_km ppkm, power(num_pts,2)/power(distance_km,3) q
+, sdo_geom.sdo_length(geom, unit=>'unit=km')  calc_km
+, sdo_util.getnumvertices(geom) actual_pts
+, sdo_util.getnumvertices(sdo_util.simplify(geom,1)) simp_pts
+from activities
+where num_pts > 1000
+and num_pts>300*distance_km
+order by q
+/
+
+
+
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 --simplifying the western isles to reduce number of points before conversion to 4326
@@ -53,7 +76,6 @@ where geom_27700 IS NOT NULL
 and SDO_UTIL.GETNUMVERTICES(geom_27700) < 150000
 and SDO_UTIL.GETNUMVERTICES(geom) >= 150000
 ;
-
 
 with x as (
 select area_code, area_number, name
