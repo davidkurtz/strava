@@ -2,10 +2,19 @@ REM fix_my_areas.sql
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 --identify children with same name - no point adding them to activity_areas, but need to drill into their children
+select c.parent_area_code, c.parent_area_number, c.name, c.area_code, c.area_number, c.matchable
+from my_areas2 p, my_areas2 c
+where p.area_code = c.parent_area_code
+and p.area_number = c.parent_area_number
+and p.name = c.name
+/
+
 alter table my_areas2 modify matchable default 1;
 update my_areas2
-set matchable=1;
+set matchable=1
+where matchable is null;
 
+--mark child as unmatchable when name same as parent
 update my_areas2 u 
 SET u.matchable = 0
 where (area_code, area_number) IN(
@@ -16,6 +25,7 @@ from my_areas2 p, my_areas2 c
 where p.area_code = c.parent_area_code
 and p.area_number = c.parent_area_number
 and p.name = c.name
+and c.matchable = 1
 ) 
 /
 ----------------------------------------------------------------------------------------------------
@@ -44,10 +54,10 @@ set geom       = sdo_util.simplify(geom,1)
 ,   geom_27700 = sdo_util.simplify(geom_27700,1)
 ,   num_pts    = sdo_util.getnumvertices(sdo_util.simplify(geom,1))
 where num_pts > 1000
-and num_pts>300*distance_km
+and num_pts>250*distance_km
 /
 
-column activity_name format a40
+column activity_name format a60
 column ppkm format 9999
 select activity_id, activity_date, activity_name, distance_km, num_pts, num_pts/distance_km ppkm, power(num_pts,2)/power(distance_km,3) q
 , sdo_geom.sdo_length(geom, unit=>'unit=km')  calc_km
@@ -55,7 +65,7 @@ select activity_id, activity_date, activity_name, distance_km, num_pts, num_pts/
 , sdo_util.getnumvertices(sdo_util.simplify(geom,1)) simp_pts
 from activities
 where num_pts > 1000
-and num_pts>300*distance_km
+and num_pts>250*distance_km
 order by q
 /
 

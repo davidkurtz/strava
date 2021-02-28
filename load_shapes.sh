@@ -63,6 +63,7 @@ clear
 #shp_load /tmp/strava/ne_10m_admin_0_sovereignty.shp
 #shp_load /tmp/strava/ne_10m_admin_0_map_units
 #shp_load /tmp/strava/ne_10m_admin_0_map_subunits
+
 #shp_load /tmp/strava/Areas_of_Outstanding_Natural_Beauty__England____Natural_England.shp 27700 AONB
 
 #shp_load /tmp/strava/Data/GB/county_region.shp 27700
@@ -72,6 +73,12 @@ clear
 #shp_load /tmp/strava/Data/Supplementary_Ceremonial/Boundary-line-ceremonial-counties_region.shp 27700
 #shp_load /tmp/strava/Data/Wales/community_ward_region.shp 27700
 
-shp_load /tmp/strava/pub_commcnc.shp 27700
+#shp_load /tmp/strava/pub_commcnc.shp 27700
 
+#shp_load /tmp/strava/IRL_adm1.shp 
 
+#shp_load /tmp/strava/USA_adm1.shp 
+#shp_load /tmp/strava/USA_adm2.shp 
+
+#shp_load /tmp/strava/NLD_adm1.shp 
+shp_load /tmp/strava/NLD_adm2.shp 

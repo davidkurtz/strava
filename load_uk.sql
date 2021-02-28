@@ -700,11 +700,14 @@ REM make UTA/MTD children of CCTY
 
 merge into my_areas2 u
 using (
+with x as (
 select m.area_code, m.area_number, m.name
-,      max(mc.area_code) parent_area_code
-,      max(mc.area_number) parent_area_number
-,      max(mc.uqid) parent_uqid
-,      max(mc.name) parent_name
+,      mc.area_code parent_area_code
+,      mc.area_number parent_area_number
+,      mc.uqid parent_uqid
+,      mc.name parent_name
+,      count(*) over (partition by m.area_code, m.area_number) num_matches 
+,      sdo_geom.relate(mc.geom_27700,'determine',m.geom_27700)
 from   my_areas2 m
 --,      my_areas2 mp
 ,      my_areas2 mc
@@ -718,11 +721,12 @@ and    m.parent_area_number IN(1159320743 --England
 and    mc.area_code = 'CCTY'
 and    mc.parent_area_Code = m.parent_area_Code
 and    mc.parent_area_number = m.parent_area_number
-and    sdo_geom.relate(m.mbr,'COVERS+CONTAINS+EQUAL',mc.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
-and    sdo_geom.relate(m.geom_27700,'COVERS+CONTAINS+EQUAL',mc.geom_27700) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
---and    mc.name = 'Berkshire'
-group by m.area_code, m.area_number, m.name
-having count(*) = 1
+and    sdo_geom.relate(mc.mbr,'COVERS+CONTAINS+EQUAL',m.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and    sdo_geom.relate(mc.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and    mc.name = 'Berkshire'
+)
+select * from x 
+where num_matches = 1
 ) s
 on (u.area_Code = s.area_Code
 and u.area_number = s.area_number)

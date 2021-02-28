@@ -36,6 +36,7 @@ procedure activity_area_search
 (p_activity_id INTEGER
 ,p_area_code   my_areas2.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas2.area_number%TYPE DEFAULT NULL
+,p_query_type VARCHAR2 DEFAULT 'P'
 ,p_level INTEGER DEFAULT 0
 );
 
@@ -297,7 +298,7 @@ procedure activity_area_search
 ,p_area_code   my_areas2.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas2.area_number%TYPE DEFAULT NULL
 ,p_level INTEGER DEFAULT 0
-,p_query_type VARCHAR2(1) DEFAULT 'P'
+,p_query_type VARCHAR2 DEFAULT 'P'
 ) IS
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
@@ -336,14 +337,23 @@ BEGIN
   ) LOOP
     dbms_output.put_line(l_pad||'Found '||i.area_code||'-'||i.area_number||':'||i.name||','||TO_CHAR(i.geom_length,'9990.999')||' km');
     IF i.area_level>0 OR i.num_children IS NULL THEN
-      INSERT INTO activity_areas
-      (activity_id, area_code, area_number, geom_length)
-      VALUES
-      (p_activity_id, i.area_code, i.area_number, i.geom_length);
+	  BEGIN
+        INSERT INTO activity_areas
+        (activity_id, area_code, area_number, geom_length)
+        VALUES
+        (p_activity_id, i.area_code, i.area_number, i.geom_length);
+	  EXCEPTION
+	    WHEN dup_val_on_index THEN
+		  UPDATE activity_areas
+		  SET    geom_length = i.geom_length
+		  WHERE  activity_id = p_activity_id
+		  AND    area_code = i.area_code
+		  AND    area_number = i.area_number;
+      END;
     END IF;
   
     IF i.num_children > 0 THEN
-      strava_pkg.activity_area_search(p_activity_id, i.area_code, i.area_number, p_level+1, 'P');
+      strava_pkg.activity_area_search(p_activity_id, i.area_code, i.area_number, 'P', p_level+1);
     END IF;
   END LOOP;
 
