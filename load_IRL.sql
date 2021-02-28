@@ -16,6 +16,9 @@ select * from my_area_codes
 order by area_level, area_code
 /
 
+--delete from activity_areas where area_code IN('TCTY','ACTY');
+--delete from my_areas2 where area_code IN('TCTY','ACTY');
+
 insert into my_area_codes values ('TCTY','Traditional County',5);
 insert into my_area_codes values ('ACTY','Administrative County',5);
 
@@ -27,8 +30,9 @@ select area_Code, area_number, uqid, area_level, name
 from my_Areas2 where name IN('Ireland')
 and area_code = 'SOVC'
 )
-select c.area_code, x.id_1 area_number, x.iso||x.id_1 uqid, x.name_1 name, x.geom
-, p.area_code parent_area_Code
+select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
+                  ||LTRIM(TO_CHAR(x.id_1,'00')) area_number, x.iso||x.id_1 uqid, x.name_1 name, x.geom
+, p.area_code parent_area_Code 
 , p.area_number parent_area_number
 , p.uqid parent_uqid
 , c.area_level
@@ -49,7 +53,7 @@ values
 ,s.geom ,sdo_geom.sdo_mbr(s.geom)
 );
 
-select level, m.name, m.parent_area_code, m.parent_area_number, m.area_level
+select level, m.area_code, m.area_number, m.uqid, m.name, m.parent_area_code, m.parent_area_number, m.parent_uqid, m.area_level
 from my_areas2 m
 start with m.name = 'Ireland'
 --m.parent_area_code is null and m.parent_area_number is null
@@ -89,6 +93,14 @@ from my_areas2 a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
+and not exists(
+  select 'x'
+  from my_areas2 a2, activity_areas b2
+  where a2.area_code = b2.area_code
+  and a2.area_number = b2.area_number
+  and b2.activity_id = b1.activity_id
+  and a2.parent_area_code = a1.area_code
+  and a2.parent_area_number = a1.area_number)
 and a1.area_code = 'SOVC'
 and a1.area_number = 1159320877
 --and rownum = 1

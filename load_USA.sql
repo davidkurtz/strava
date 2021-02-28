@@ -16,6 +16,9 @@ select * from my_area_codes
 order by area_level, area_code
 /
 
+--delete from activity_areas where area_code IN('STAT','FDIS');
+--delete from my_areas2 where area_code IN('STAT','FDIS');
+
 insert into my_area_codes values ('STAT','State',5);
 insert into my_area_codes values ('FDIS','Federal District',5);
 insert into my_area_codes values ('CITY','City',6);
@@ -36,7 +39,8 @@ select area_Code, area_number, uqid, area_level, name
 from my_Areas2 where name IN('United States of America')
 and area_code = 'CTRY'
 )
-select c.area_code, x.id_1 area_number, x.iso||x.id_1 uqid, x.name_1 name, geom
+select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
+                  ||LTRIM(TO_CHAR(x.id_1,'00')) area_number, x.iso||x.id_1 uqid, x.name_1 name, geom
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid
@@ -138,19 +142,19 @@ update my_areas2
 set parent_area_Code = 'GEOS'
 ,   parent_area_number = 1159321395 /*Hawaii*/
 ,   parent_uqid = 'NE1159321395'
-where area_code = 'STAT' AND area_number = 12;
+where area_code = 'STAT' AND area_number = 24412;
 
 update my_areas2 
 set parent_area_Code = 'GEOS'
 ,   parent_area_number = 1159321397 /*Alaska*/
 ,   parent_uqid = 'NE1159321397'
-where area_code = 'STAT' AND area_number = 2;
+where area_code = 'STAT' AND area_number = 24402;
 
 update my_areas2 
 set parent_area_Code = 'GEOS'
 ,   parent_area_number = 1159321393 /*Continental USA*/
 ,   parent_uqid = 'NE1159321393'
-where area_code = 'STAT' AND area_number IN(10,24,48);
+where area_code = 'STAT' AND area_number IN(24410,24424,24448);
 
 
 --merge counties into area
@@ -163,7 +167,9 @@ where area_code IN('STAT','FDIS')
 and parent_area_code = 'GEOS'
 and parent_area_number IN(1159321393,1159321395,1159321397)
 )
-select c.area_code, x.id_1 area_number, x.iso||x.id_2 uqid, x.name_2, geom
+select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
+                  ||LTRIM(TO_CHAR(x.id_1,'00'))
+                  ||LTRIM(TO_CHAR(x.id_2,'00')) area_number, x.iso||x.id_2 uqid, x.name_2, geom
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid
@@ -229,6 +235,14 @@ from my_areas2 a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
+and not exists(
+  select 'x'
+  from my_areas2 a2, activity_areas b2
+  where a2.area_code = b2.area_code
+  and a2.area_number = b2.area_number
+  and b2.activity_id = b1.activity_id
+  and a2.parent_area_code = a1.area_code
+  and a2.parent_area_number = a1.area_number)
 and a1.area_code = 'GEOS'
 and a1.area_number = 1159321393
 --and rownum = 1
