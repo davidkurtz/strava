@@ -1,4 +1,4 @@
-load_IRL.sql
+REM load_IRL.sql
 
 #https://data.biogeo.ucdavis.edu/data/diva/adm/IRL_adm.zip
 #cd /tmp/strava/
@@ -17,17 +17,17 @@ order by area_level, area_code
 /
 
 --delete from activity_areas where area_code IN('TCTY','ACTY');
---delete from my_areas2 where area_code IN('TCTY','ACTY');
+--delete from my_areas where area_code IN('TCTY','ACTY');
 
 insert into my_area_codes values ('TCTY','Traditional County',5);
 insert into my_area_codes values ('ACTY','Administrative County',5);
 
 --merge counties into country
-merge into my_areas2 u
+merge into my_areas u
 using (
 with p as (
 select area_Code, area_number, uqid, area_level, name
-from my_Areas2 where name IN('Ireland')
+from my_areas where name IN('Ireland')
 and area_code = 'SOVC'
 )
 select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
@@ -54,15 +54,15 @@ values
 );
 
 select level, m.area_code, m.area_number, m.uqid, m.name, m.parent_area_code, m.parent_area_number, m.parent_uqid, m.area_level
-from my_areas2 m
+from my_areas m
 start with m.name = 'Ireland'
 --m.parent_area_code is null and m.parent_area_number is null
 connect by prior m.area_code = m.parent_area_code and prior m.area_number = m.parent_area_number
 /
 
-update my_Areas2 p
+update my_areas p
 set p.num_children = (select NULLIF(count(*),0)
-  from my_Areas2 c
+  from my_areas c
   where c.parent_area_Code = p.area_Code
   and   c.parent_area_number = p.area_number
   and   c.parent_uqid = p.uqid)
@@ -70,13 +70,13 @@ set p.num_children = (select NULLIF(count(*),0)
 
 --areas with children, but none of children identified
 select a1.area_code, a1.area_number, a1.name, count(*)
-from my_areas2 a1, activity_areas b1
+from my_areas a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas2 a2, activity_areas b2
+  from my_areas a2, activity_areas b2
   where a2.area_code = b2.area_code
   and a2.area_number = b2.area_number
   and b2.activity_id = b1.activity_id
@@ -89,13 +89,13 @@ set serveroutput on
 BEGIN 
   FOR i IN(
 select a1.area_code, a1.area_number, a1.name, b1.activity_id
-from my_areas2 a1, activity_areas b1
+from my_areas a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas2 a2, activity_areas b2
+  from my_areas a2, activity_areas b2
   where a2.area_code = b2.area_code
   and a2.area_number = b2.area_number
   and b2.activity_id = b1.activity_id

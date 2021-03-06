@@ -1,4 +1,4 @@
-load_FRA.sql
+REM load_FRA.sql
 
 #cd /tmp/strava/
 #ln -s /vagrant/files/load_shapes.sh ./
@@ -30,17 +30,17 @@ insert into my_area_codes values ('CANT','Canton',7);
 insert into my_area_codes values ('COMM','Commune',8);
 
 --delete corsica
-delete from my_Areas2
+delete from my_areas
 where area_code = 'GEOS'
 and area_number = 1159320673;
 
 
 --merge regions into area
-merge into my_areas2 u
+merge into my_areas u
 using (
 with p as (
 select area_Code, area_number, uqid, area_level, name
-from my_Areas2 where name IN('France')
+from my_areas where name IN('France')
 and area_code = 'GEOU'
 and area_number = 1159320651
 )
@@ -69,11 +69,11 @@ values
 
 
 --merge departments into area
-merge into my_areas2 u
+merge into my_areas u
 using (
 with p as (
 select area_Code, area_number, uqid, area_level, name
-from my_Areas2 
+from my_areas 
 where parent_area_code = 'GEOU'
 and parent_area_number = 1159320651
 )
@@ -103,7 +103,7 @@ values
 );
 
 --merge distrinct into area
-merge into my_areas2 u
+merge into my_areas u
 using (
 select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'3'
 				  ||LTRIM(TO_CHAR(x.id_3,'000')) area_number, x.iso||'C'||x.id_3 uqid, x.name_3, x.geom
@@ -111,7 +111,7 @@ select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'3'
 , p.area_number parent_area_number
 , p.uqid parent_uqid
 , 7 area_level
-from FRA_adm3 x, my_area_codes c, my_areas2 p
+from FRA_adm3 x, my_area_codes c, my_areas p
 where c.description = x.engtype_3
 and p.area_code = 'DEPT'
 and LTRIM(TO_CHAR(x.id_0,'000'))||'2'
@@ -132,7 +132,7 @@ values
 );
 
 --merge cantons into area
-merge into my_areas2 u
+merge into my_areas u
 using (
 select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'4'
 				  ||LTRIM(TO_CHAR(x.id_4,'0000')) area_number, x.iso||'D'||x.id_4 uqid, x.name_4
@@ -141,7 +141,7 @@ select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'4'
 , p.area_number parent_area_number
 , p.uqid parent_uqid
 , 8 area_level
-from FRA_adm4 x, my_area_codes c, my_areas2 p
+from FRA_adm4 x, my_area_codes c, my_areas p
 where c.description = x.engtype_4
 and c.area_code = 'CANT'
 and p.area_code = 'DIS'
@@ -163,7 +163,7 @@ values
 );
 
 --merge communes into area
-merge into my_areas2 u
+merge into my_areas u
 using (
 select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'5'
 				  ||LTRIM(TO_CHAR(x.id_5,'00000')) area_number, x.iso||'E'||x.id_5 uqid, x.name_5
@@ -172,7 +172,7 @@ select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'5'
 , p.area_number parent_area_number
 , p.uqid parent_uqid
 , 8 area_level
-from FRA_adm5 x, my_area_codes c, my_areas2 p
+from FRA_adm5 x, my_area_codes c, my_areas p
 where c.description = x.engtype_5
 and c.area_code = 'COMM'
 and p.area_code = 'CANT'
@@ -195,16 +195,16 @@ values
 
 set pages 99 lines 180 timi on
 select level, m.area_code, m.area_number, m.uqid, m.name, m.parent_area_code, m.parent_area_number, m.parent_uqid, m.area_level
-from my_areas2 m
+from my_areas m
 start with name IN('France') and area_code = 'SOV' and area_number = 1159320629
 --m.parent_area_code is null and m.parent_area_number is null
 connect by prior m.area_code = m.parent_area_code and prior m.area_number = m.parent_area_number
 /
 
 --recalc number children
-update my_Areas2 p
+update my_areas p
 set p.num_children = (select NULLIF(count(*),0)
-  from my_Areas2 c
+  from my_areas c
   where c.parent_area_Code = p.area_Code
   and   c.parent_area_number = p.area_number
   and   c.parent_uqid = p.uqid)
@@ -212,13 +212,13 @@ set p.num_children = (select NULLIF(count(*),0)
 
 --areas with children, but none of children identified
 select a1.area_code, a1.area_number, a1.name, count(*)
-from my_areas2 a1, activity_areas b1
+from my_areas a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas2 a2, activity_areas b2
+  from my_areas a2, activity_areas b2
   where a2.area_code = b2.area_code
   and a2.area_number = b2.area_number
   and b2.activity_id = b1.activity_id
@@ -232,13 +232,13 @@ set serveroutput on
 BEGIN 
   FOR i IN(
 select a1.area_code, a1.area_number, a1.name, b1.activity_id
-from my_areas2 a1, activity_areas b1
+from my_areas a1, activity_areas b1
 where a1.area_code = b1.area_code
 and a1.area_number = b1.area_number
 and a1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas2 a2, activity_areas b2
+  from my_areas a2, activity_areas b2
   where a2.area_code = b2.area_code
   and a2.area_number = b2.area_number
   and b2.activity_id = b1.activity_id

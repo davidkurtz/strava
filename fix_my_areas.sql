@@ -1,39 +1,62 @@
 REM fix_my_areas.sql
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
+--exec dbms_stats.gather_table_stats(user,'my_areas');
+update my_areas p
+set p.num_children = (select NULLIF(count(*),0)
+  from my_areas c
+  where c.parent_area_Code = p.area_Code
+  and   c.parent_area_number = p.area_number
+  and   c.parent_uqid = p.uqid)
+/
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 --identify children with same name - no point adding them to activity_areas, but need to drill into their children
-select c.parent_area_code, c.parent_area_number, c.name, c.area_code, c.area_number, c.matchable
-from my_areas2 p, my_areas2 c
+select c.parent_area_code, c.parent_area_number, p.num_children, c.name, c.area_code, c.area_number, c.matchable, c.num_children
+from my_areas p, my_areas c
 where p.area_code = c.parent_area_code
 and p.area_number = c.parent_area_number
 and p.name = c.name
+order by c.name
 /
 
-alter table my_areas2 modify matchable default 1;
-update my_areas2
+update my_areas
 set matchable=1
 where matchable is null;
 
 --mark child as unmatchable when name same as parent
-update my_areas2 u 
+update my_areas u 
 SET u.matchable = 0
 where (area_code, area_number) IN(
 select /*p.area_code parent_area_code, p.area_number parent_area_number 
 , p.name parent_name, p.num_children, sdo_geom.sdo_area(p.geom, unit=>'unit=SQ_KM') p_area,*/
  c.area_code, c.area_number /*, sdo_geom.sdo_area(c.geom, unit=>'unit=SQ_KM') c_Area*/
-from my_areas2 p, my_areas2 c
+from my_areas p, my_areas c
 where p.area_code = c.parent_area_code
 and p.area_number = c.parent_area_number
 and p.name = c.name
 and c.matchable = 1
 ) 
 /
+
+--delete any activity areas matched to areas whose parent has the same name
+--delete any activity areas matched to areas whose parent has the same name
+delete from activity_areas
+where (area_code, area_number) IN (
+select m.area_code, m.area_number
+from my_areas m, activity_areas a
+where a.area_code = m.area_Code
+and a.area_number = m.area_number
+and m.matchable = 0
+group by m.area_code, m.area_number, m.name)
+/
+
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---exec dbms_stats.gather_table_stats(user,'MY_AREAS2');
-update my_Areas2 p
+--exec dbms_stats.gather_table_stats(user,'my_areas');
+update my_areas p
 set p.num_children = (select NULLIF(count(*),0)
-  from my_Areas2 c
+  from my_areas c
   where c.parent_area_Code = p.area_Code
   and   c.parent_area_number = p.area_number
   and   c.parent_uqid = p.uqid)
@@ -74,13 +97,13 @@ order by q
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 --simplifying the western isles to reduce number of points before conversion to 4326
-update my_Areas2 s
+update my_areas s
 set geom_27700 = sdo_util.simplify(geom_27700,10)
 --,   geom_27700 = sdo_util.simplify(geom_27700,10)
 where geom_27700 IS NOT NULL
 and SDO_UTIL.GETNUMVERTICES(geom_27700) >= 150000
 ;
-update my_Areas2 s
+update my_areas s
 set geom = sdo_cs.transform(geom_27700,4326)
 where geom_27700 IS NOT NULL
 and SDO_UTIL.GETNUMVERTICES(geom_27700) < 150000
@@ -92,7 +115,7 @@ select area_code, area_number, name
 , SDO_UTIL.GETNUMVERTICES(geom) num_vert_4326
 , SDO_UTIL.GETNUMVERTICES(geom_27700) num_vert_27700
 --, SDO_UTIL.GETNUMVERTICES(sdo_util.simplify(geom_27700,10))
-from my_Areas2
+from my_areas
 )
 select x.* from x
 where num_vert_4326>1e5 

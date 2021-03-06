@@ -34,8 +34,8 @@ return sdo_geometry deterministic;
 
 procedure activity_area_search
 (p_activity_id INTEGER
-,p_area_code   my_areas2.area_code%TYPE DEFAULT NULL
-,p_area_number my_areas2.area_number%TYPE DEFAULT NULL
+,p_area_code   my_areas.area_code%TYPE DEFAULT NULL
+,p_area_number my_areas.area_number%TYPE DEFAULT NULL
 ,p_query_type VARCHAR2 DEFAULT 'P'
 ,p_level INTEGER DEFAULT 0
 );
@@ -295,8 +295,8 @@ end make_point;
 ----------------------------------------------------------------------------------------------------
 procedure activity_area_search
 (p_activity_id INTEGER
-,p_area_code   my_areas2.area_code%TYPE DEFAULT NULL
-,p_area_number my_areas2.area_number%TYPE DEFAULT NULL
+,p_area_code   my_areas.area_code%TYPE DEFAULT NULL
+,p_area_number my_areas.area_number%TYPE DEFAULT NULL
 ,p_level INTEGER DEFAULT 0
 ,p_query_type VARCHAR2 DEFAULT 'P'
 ) IS
@@ -323,8 +323,8 @@ BEGIN
    ,      CASE WHEN m.geom_27700 IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom_27700,a.geom_27700,5), unit=>'unit=km') 
                WHEN m.geom       IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
-   ,      (SELECT MIN(m2.area_level) FROM my_areas2 m2 WHERE m2.parent_area_Code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
-   FROM   my_areas2 m
+   ,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_Code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
+   FROM   my_areas m
    ,      activities a
    WHERE  (  (p_query_type = 'P' AND parent_area_code = p_area_code AND parent_area_number = p_area_number) 
           OR (p_query_type = 'A' AND area_code        = p_area_code AND area_number        = p_area_number)

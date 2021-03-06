@@ -3,7 +3,7 @@ REM load_countries.sql
 set pages 99 lines 180 
 desc ne_10m_admin_0_sovereignty
 
-alter table my_areas2 modify name varchar2(60);
+alter table my_areas modify name varchar2(60);
 alter table my_area_codes modify description varchar2(40);
 
 select distinct type, level_
@@ -30,9 +30,9 @@ insert into my_area_codes values ('OVR4','Overlay',4);
 select distinct type, level_ from ne_10m_admin_0_sovereignty minus 
 select description, area_level from my_Area_codes;
 ----------------------------------------------------------------------------------------------------
-truncate table my_Areas2;
+truncate table my_areas;
 
-merge into my_areas2 u
+merge into my_areas u
 using (
 select x.*, a.area_code
 from ne_10m_admin_0_sovereignty x, my_area_codes a
@@ -65,13 +65,13 @@ order by 2,1
 select type from ne_10m_admin_0_map_units
 minus select description from my_Area_codes;
 
-merge into my_areas2 u
+merge into my_areas u
 using (
 select x.*, a.area_code
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid 
-from ne_10m_admin_0_map_units x, my_area_codes a, my_areas2 p
+from ne_10m_admin_0_map_units x, my_area_codes a, my_areas p
 where a.description = x.type
 and a.area_level = x.level_
 and p.area_level < a.area_level
@@ -107,13 +107,13 @@ order by 2,1
 select type from ne_10m_admin_0_map_subunits
 minus select description from my_Area_codes;
 
-merge into my_areas2 u
+merge into my_areas u
 using (
 select x.*, a.area_code
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid 
-from ne_10m_admin_0_map_subunits x, my_area_codes a, my_areas2 p
+from ne_10m_admin_0_map_subunits x, my_area_codes a, my_areas p
 where a.description = x.type
 and a.area_level = x.level_
 and p.area_level < a.area_level
