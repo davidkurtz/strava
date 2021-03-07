@@ -1,7 +1,8 @@
 REM fix_my_areas.sql
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---exec dbms_stats.gather_table_stats(user,'my_areas');
+exec dbms_stats.gather_table_stats(user,'my_areas');
+
 update my_areas p
 set p.num_children = (select NULLIF(count(*),0)
   from my_areas c

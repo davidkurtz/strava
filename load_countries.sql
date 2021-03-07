@@ -30,7 +30,7 @@ insert into my_area_codes values ('OVR4','Overlay',4);
 select distinct type, level_ from ne_10m_admin_0_sovereignty minus 
 select description, area_level from my_Area_codes;
 ----------------------------------------------------------------------------------------------------
-truncate table my_areas;
+--truncate table my_areas;
 
 merge into my_areas u
 using (
