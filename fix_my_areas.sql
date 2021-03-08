@@ -3,6 +3,7 @@ REM fix_my_areas.sql
 ----------------------------------------------------------------------------------------------------
 exec dbms_stats.gather_table_stats(user,'my_areas');
 
+--count number of children
 update my_areas p
 set p.num_children = (select NULLIF(count(*),0)
   from my_areas c
@@ -21,6 +22,7 @@ and p.name = c.name
 order by c.name
 /
 
+--by default all areas are matchable
 update my_areas
 set matchable=1
 where matchable is null;
@@ -41,7 +43,6 @@ and c.matchable = 1
 /
 
 --delete any activity areas matched to areas whose parent has the same name
---delete any activity areas matched to areas whose parent has the same name
 delete from activity_areas
 where (area_code, area_number) IN (
 select m.area_code, m.area_number
@@ -54,14 +55,6 @@ group by m.area_code, m.area_number, m.name)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---exec dbms_stats.gather_table_stats(user,'my_areas');
-update my_areas p
-set p.num_children = (select NULLIF(count(*),0)
-  from my_areas c
-  where c.parent_area_Code = p.area_Code
-  and   c.parent_area_number = p.area_number
-  and   c.parent_uqid = p.uqid)
-/
 
 --REM simplify activities with >100 pts/km and >10000 points to reduce processing time
 update activities
@@ -97,7 +90,7 @@ order by q
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---simplifying the western isles to reduce number of points before conversion to 4326
+--simplifying areas to reduce number of points before conversion to 4326
 update my_areas s
 set geom_27700 = sdo_util.simplify(geom_27700,10)
 --,   geom_27700 = sdo_util.simplify(geom_27700,10)
@@ -115,7 +108,8 @@ with x as (
 select area_code, area_number, name
 , SDO_UTIL.GETNUMVERTICES(geom) num_vert_4326
 , SDO_UTIL.GETNUMVERTICES(geom_27700) num_vert_27700
---, SDO_UTIL.GETNUMVERTICES(sdo_util.simplify(geom_27700,10))
+, SDO_UTIL.GETNUMVERTICES(sdo_util.simplify(geom,10)) simp_4326
+, SDO_UTIL.GETNUMVERTICES(sdo_util.simplify(geom_27700,10)) simp_27700
 from my_areas
 )
 select x.* from x
@@ -137,9 +131,6 @@ UTA       122011 Cornwall                                                       
 UTW       131978 Beinn na Foghla agus Uibhist a Tuath                                109908         109908
 UTW       130079 Kintyre and the Islands                                             104391         104391
 UTW       128176 North, West and Central Sutherland                                  100430         100430
-
-AREA AREA_NUMBER NAME                                                         NUM_VERT_4326 NUM_VERT_27700
----- ----------- ------------------------------------------------------------ ------------- --------------
 UTA       129866 Highland                                                             67438         381605
 CCTY          87 Western Isles                                                        63920         328198
 UTA       136431 Na h-Eileanan an Iar                                                 62055         328551

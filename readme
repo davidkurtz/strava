@@ -1,0 +1,21 @@
+Set-Up
+	strava_privs.sql  - create strava schema and grant privileges
+	strava_pkg.sql - create PL/SQL package for processing
+	load_shapes.sh - load shapefiles
+	
+* Load All Countries
+	load_countries.sql - load NaturalEarth data 
+
+* Load UK data
+	load_uk.sql - from OSGB border_line data to my_areas
+	fix_names.sql - tidy up UK names, moving suffixes to suffix column
+
+* Load detail data for Other Countries 
+	load_AUT.sql
+	load_FRA.sql
+	load_IRL.sql
+	load_NLD.sql
+	load_USA.sql
+	
+* Post Load
+	fix_my_areas.sql - tidy up areas after load
