@@ -30,6 +30,7 @@ CREATE TABLE my_areas
 ,geom mdsys.sdo_geometry
 ,geom_27700 mdsys.sdo_geometry
 ,mbr mdsys.sdo_geometry
+,num_pts integer
 ,constraint my_areas_pk primary key (area_code, area_number)
 ,constraint my_areas_uqid unique (uqid)
 ,constraint my_areas_uq_iso_code3 unique (iso_code3);
@@ -38,7 +39,7 @@ CREATE TABLE my_areas
 ,constraint my_areas_fk_area_code foreign key (area_code) references my_area_codes (area_code)
 )
 /
-
+alter table my_areas add num_pts integer;
 --alter table my_areas modify matchable default 1;
 --Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);
 Create index my_areas_rfk_uqid on my_areas(parent_uqid);
