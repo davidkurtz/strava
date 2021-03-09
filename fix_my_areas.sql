@@ -90,22 +90,53 @@ order by q
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---simplifying areas to reduce number of points before conversion to 4326
+--simplifying UK areas to reduce number of points before conversion to 4326
+
+update my_areas s
+set num_pts = SDO_UTIL.GETNUMVERTICES(geom)
+where num_pts IS NULL
+and geom is not null
+/
+
+--simplify complex UK areas
 update my_areas s
 set geom_27700 = sdo_util.simplify(geom_27700,10)
---,   geom_27700 = sdo_util.simplify(geom_27700,10)
+,   geom = sdo_cs.transform(sdo_util.simplify(geom_27700,10),4326)
+,   num_pts = NULL
 where geom_27700 IS NOT NULL
-and SDO_UTIL.GETNUMVERTICES(geom_27700) >= 150000
-;
-update my_areas s
-set geom = sdo_cs.transform(geom_27700,4326)
-where geom_27700 IS NOT NULL
-and SDO_UTIL.GETNUMVERTICES(geom_27700) < 150000
-and SDO_UTIL.GETNUMVERTICES(geom) >= 150000
+--and SDO_UTIL.GETNUMVERTICES(geom_27700) >= 1e5
+and num_pts >= 1e5
 ;
 
+--bring BNG simplifications to WGS84 geom
+update my_areas s
+set geom = sdo_cs.transform(geom_27700,4326)
+,   num_pts = NULL
+where geom_27700 IS NOT NULL
+and SDO_UTIL.GETNUMVERTICES(geom_27700) < 1e5
+and SDO_UTIL.GETNUMVERTICES(geom) >= 1e5
+and (num_pts >= 1e5 OR num_pts is null)
+;
+
+--simplify non-UK areas 
+update my_areas s
+set geom = sdo_util.simplify(geom,10)
+,   num_pts = NULL
+where geom_27700 IS NULL
+--and SDO_UTIL.GETNUMVERTICES(geom) >= 1e5
+and num_pts >= 1e5
+;
+
+update my_areas s
+set num_pts = SDO_UTIL.GETNUMVERTICES(geom)
+where num_pts IS NULL
+and geom is not null
+/
+
+
+
 with x as (
-select area_code, area_number, name
+select area_code, area_number, name, num_pts
 , SDO_UTIL.GETNUMVERTICES(geom) num_vert_4326
 , SDO_UTIL.GETNUMVERTICES(geom_27700) num_vert_27700
 , SDO_UTIL.GETNUMVERTICES(sdo_util.simplify(geom,10)) simp_4326
@@ -115,6 +146,8 @@ from my_areas
 select x.* from x
 where num_vert_4326>1e5 
 or    num_vert_27700>1e5 
+or    num_vert_4326 != num_vert_27700
+or    num_pts > 1e5
 order by num_vert_4326 desc
 /
 
