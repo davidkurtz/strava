@@ -16,9 +16,9 @@ commit;
 
 ----------------------------------------------------------------------------------------------------
 rollback;
-create or replace package strava_pkg as 
+CREATE OR REPLACE PACKAGE strava_pkg as 
 
-procedure activity_area_search
+PROCEDURE activity_area_search
 (p_activity_id INTEGER
 ,p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
@@ -26,33 +26,39 @@ procedure activity_area_search
 ,p_level INTEGER DEFAULT 0
 );
 
-procedure area_heirarchy
-(p_rowid in rowid
-,p_dataout IN OUT NOCOPY CLOB);
-
-function getClobDocument
+FUNCTION getClobDocument
 (p_directory IN VARCHAR2
 ,p_filename  IN VARCHAR2
 ,p_charset   IN VARCHAR2 DEFAULT NULL
-) return         CLOB deterministic;
+) RETURN  CLOB DETERMINISTIC;
 
-procedure load_activity
+PROCEDURE load_activity
 (p_activity_id INTEGER);
 
-function make_point 
+FUNCTION make_point 
 (longitude in number
-,latitude  in number)
-return sdo_geometry deterministic;
+,latitude  in number
+) RETURN sdo_geometry DETERMINISTIC;
+
+FUNCTION name_heirarchy_fn
+(p_area_code   my_areas.area_code%TYPE DEFAULT NULL
+,p_area_number my_areas.area_number%TYPE DEFAULT NULL
+) RETURN CLOB DETERMINISTIC;
+
+PROCEDURE name_heirarchy_txtidx
+(p_rowid in rowid
+,p_dataout IN OUT NOCOPY CLOB
+);
 
 end strava_pkg;
 /
 show errors
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-create or replace package body strava_pkg as 
+CREATE OR REPLACE PACKAGE body strava_pkg as 
 k_module      CONSTANT VARCHAR2(48) := $$PLSQL_UNIT;
 ----------------------------------------------------------------------------------------------------
-procedure activity_area_search
+PROCEDURE activity_area_search
 (p_activity_id INTEGER
 ,p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
@@ -82,7 +88,7 @@ BEGIN
    ,      CASE WHEN m.geom_27700 IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom_27700,a.geom_27700,5), unit=>'unit=km') 
                WHEN m.geom       IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
-   ,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_Code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
+   ,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
    FROM   my_areas m
    ,      activities a
    WHERE  (  (p_query_type = 'P' AND parent_area_code = p_area_code AND parent_area_number = p_area_number) 
@@ -124,51 +130,13 @@ BEGIN
                                   ,action_name=>l_action);
 END activity_area_search;
 ----------------------------------------------------------------------------------------------------
-procedure area_heirarchy
-(p_rowid in rowid
-,p_dataout IN OUT NOCOPY CLOB
-) IS
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
-
-  l_name   my_areas.name%TYPE;
-  l_parent_area_code my_Areas.parent_area_code%TYPE;
-  l_parent_area_number my_areas.parent_area_code%TYPE;
-  l_count INTEGER := 0;
-BEGIN
-  dbms_application_info.read_module(module_name=>l_module
-                                   ,action_name=>l_action);
-  dbms_application_info.set_module(module_name=>k_module
-                                  ,action_name=>'area_heirarchy');
-								  
-  FOR i IN (
-    SELECT area_code, area_number, name, matchable
-    FROM   my_areas m
-    START WITH rowid = p_rowid
-    CONNECT BY NOCYCLE prior m.parent_area_code   = m.area_Code
-                   AND prior m.parent_area_number = m.area_number
-  ) LOOP
-    IF i.matchable >= 1 THEN
-      --dbms_output.put_line(i.name);
-      l_count := l_count + 1;
-	  p_dataout := p_dataout || CASE WHEN l_count>1 THEN ', ' END|| i.name;
-      --dbms_lob.writeappend(p_dataout, length(i.name), i.name);
-	END IF;
-  END LOOP;
-
-  --dbms_output.put_line(p_dataout);
-  dbms_application_info.set_module(module_name=>l_module
-                                  ,action_name=>l_action);
-END area_heirarchy;
-----------------------------------------------------------------------------------------------------
-function getClobDocument
+FUNCTION getClobDocument
 (p_directory IN VARCHAR2
 ,p_filename  IN VARCHAR2
 ,p_charset   IN VARCHAR2 DEFAULT NULL
-) return        CLOB deterministic
-is
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
+) RETURN CLOB DETERMINISTIC is
+  l_module        VARCHAR2(64);
+  l_action        VARCHAR2(64);
 
   v_filename      VARCHAR2(128);
   v_directory     VARCHAR2(128);
@@ -256,8 +224,9 @@ exception when others then
   raise;
 end getClobDocument;
 ----------------------------------------------------------------------------------------------------
-procedure load_activity
-(p_activity_id INTEGER) IS
+PROCEDURE load_activity
+(p_activity_id INTEGER
+) IS
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
 
@@ -379,10 +348,10 @@ END IF;
 
 END load_activity;
 ----------------------------------------------------------------------------------------------------
-function make_point 
+FUNCTION make_point 
 (longitude in number
-,latitude  in number)
-return sdo_geometry deterministic is
+,latitude  in number
+) RETURN sdo_geometry DETERMINISTIC is
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
 begin
@@ -405,6 +374,81 @@ begin
   dbms_application_info.set_module(module_name=>l_module
                                   ,action_name=>l_action);
 end make_point;
+----------------------------------------------------------------------------------------------------
+FUNCTION name_heirarchy_fn
+(p_area_code   my_areas.area_code%TYPE DEFAULT NULL
+,p_area_number my_areas.area_number%TYPE DEFAULT NULL
+) RETURN CLOB DETERMINISTIC is
+  l_module VARCHAR2(64);
+  l_action VARCHAR2(64);
+
+  l_name_heirarchy CLOB;
+  l_count INTEGER := 0;
+BEGIN
+  dbms_application_info.read_module(module_name=>l_module
+                                   ,action_name=>l_action);
+  dbms_application_info.set_module(module_name=>k_module
+                                  ,action_name=>'name_heirarchy_fn');
+								  
+  FOR i IN (
+    SELECT area_code, area_number, name, matchable
+    FROM   my_areas m
+    START WITH area_code = p_area_code AND area_number = p_area_number
+    CONNECT BY NOCYCLE prior m.parent_area_code   = m.area_code
+                   AND prior m.parent_area_number = m.area_number
+  ) LOOP
+    IF i.matchable >= 1 THEN
+      l_count := l_count + 1;
+	  IF l_count > 1 THEN
+        l_name_heirarchy := l_name_heirarchy ||', '|| i.name;
+	  ELSE
+        l_name_heirarchy := i.name;
+	  END IF;
+	END IF;
+  END LOOP;
+  --dbms_output.put_line(p_dataout);
+  dbms_application_info.set_module(module_name=>l_module
+                                  ,action_name=>l_action);
+  RETURN l_name_heirarchy;
+END name_heirarchy_fn;
+----------------------------------------------------------------------------------------------------
+PROCEDURE name_heirarchy_txtidx
+(p_rowid in rowid
+,p_dataout IN OUT NOCOPY CLOB
+) IS
+  l_module VARCHAR2(64);
+  l_action VARCHAR2(64);
+
+  l_count INTEGER := 0;
+BEGIN
+  dbms_application_info.read_module(module_name=>l_module
+                                   ,action_name=>l_action);
+  dbms_application_info.set_module(module_name=>k_module
+                                  ,action_name=>'name_heirarchy_txtidx');
+								  
+  FOR i IN (
+    SELECT area_code, area_number, name, matchable
+    FROM   my_areas m
+    START WITH rowid = p_rowid
+    CONNECT BY NOCYCLE prior m.parent_area_code   = m.area_code
+                   AND prior m.parent_area_number = m.area_number
+  ) LOOP
+    IF i.matchable >= 1 THEN
+      --dbms_output.put_line(i.name);
+      l_count := l_count + 1;
+	  IF l_count > 1 THEN
+        p_dataout := p_dataout ||', '|| i.name;
+	  ELSE
+        p_dataout := i.name;
+	  END IF;
+      --dbms_lob.writeappend(p_dataout, length(i.name), i.name);
+	END IF;
+  END LOOP;
+
+  --dbms_output.put_line(p_dataout);
+  dbms_application_info.set_module(module_name=>l_module
+                                  ,action_name=>l_action);
+END name_heirarchy_txtidx;
 ----------------------------------------------------------------------------------------------------
 END strava_pkg;
 /

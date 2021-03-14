@@ -39,6 +39,7 @@ CREATE TABLE my_areas
 ,constraint my_areas_fk_area_code foreign key (area_code) references my_area_codes (area_code)
 ,constraint my_areas_check_parent_area_code CHECK (area_code != parent_area_code OR area_number != parent_area_number) --linked list validation-not self parent
 ,constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid) --not self parent
+,constraint my_areas_check_matchable CHECK (matchable IN(0,1))
 )
 /
 
@@ -47,6 +48,10 @@ alter table my_areas modify matchable default 1;
 Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);
 Alter table my_areas add constraint my_areas_check_parent_area_code CHECK (area_code != parent_area_code OR area_number != parent_area_number);
 Alter table my_areas add constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid);
+Alter table my_areas add constraint my_areas_check_matchable CHECK (matchable IN(0,1));
+
+alter table my_areas drop column name_heirarchy;
+alter table my_areas add name_heirarchy VARCHAR(4000) as (strava_pkg.name_heirarchy_fn(area_code,area_number));
 
 Create index my_areas_rfk_uqid on my_areas(parent_uqid);
 Create index my_areas_rfk_area_code on my_areas (parent_area_code, parent_area_number);
