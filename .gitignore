@@ -223,7 +223,7 @@ pip-log.txt
 *.old
 *.lst
 *.zip
-pstemp.sql
 zi*
-ps360_*_*_*
 a*.buf
+strava_pkg_v1.sql
+strava_pkg_test1.sql

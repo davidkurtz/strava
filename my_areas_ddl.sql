@@ -32,16 +32,22 @@ CREATE TABLE my_areas
 ,mbr mdsys.sdo_geometry
 ,num_pts integer
 ,constraint my_areas_pk primary key (area_code, area_number)
-,constraint my_areas_uqid unique (uqid)
-,constraint my_areas_uq_iso_code3 unique (iso_code3);
-,constraint my_areas_rfk_area_code foreign key (parent_area_code, parent_area_number) references my_areas (area_code, area_number)
-,constraint my_areas_rfk_uqid foreign key (parent_uqid) references my_areas (uqid)
+,constraint my_areas_uqid unique (uqid) --alternative unique identifier
+,constraint my_areas_uq_iso_code3 unique (iso_code3); --standard country code unique identifies one country row
+,constraint my_areas_rfk_area_code foreign key (parent_area_code, parent_area_number) references my_areas (area_code, area_number) --linked list validation
+,constraint my_areas_rfk_uqid foreign key (parent_uqid) references my_areas (uqid) --linked list validation
 ,constraint my_areas_fk_area_code foreign key (area_code) references my_area_codes (area_code)
+,constraint my_areas_check_parent_area_code CHECK (area_code != parent_area_code OR area_number != parent_area_number) --linked list validation-not self parent
+,constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid) --not self parent
 )
 /
+
 alter table my_areas add num_pts integer;
---alter table my_areas modify matchable default 1;
---Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);
+alter table my_areas modify matchable default 1;
+Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);
+Alter table my_areas add constraint my_areas_check_parent_area_code CHECK (area_code != parent_area_code OR area_number != parent_area_number);
+Alter table my_areas add constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid);
+
 Create index my_areas_rfk_uqid on my_areas(parent_uqid);
 Create index my_areas_rfk_area_code on my_areas (parent_area_code, parent_area_number);
 

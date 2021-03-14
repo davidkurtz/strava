@@ -174,6 +174,10 @@ left outer join p
 ) s
 on (u.area_code = s.area_code
 and u.area_number = s.area_number)
+when matched then update
+set u.parent_area_Code = s.parent_area_Code
+, u.parent_area_number = s.parent_area_number
+, u.parent_uqid = s.parent_uqid
 when not matched then insert 
 (u.area_Code ,u.area_number ,u.uqid 
 ,u.parent_area_Code ,u.parent_area_number ,u.parent_uqid 
@@ -188,6 +192,7 @@ values
 /
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
+--CPC/NPC
 desc parish_region
 select distinct area_code
 from parish_region
@@ -240,6 +245,10 @@ left outer join p
 ) s
 on (u.area_code = s.area_code
 and u.area_number = s.area_number)
+when matched then update
+set u.parent_area_code = s.parent_area_Code
+, u.parent_area_number = s.parent_area_number
+, u.parent_uqid  = s.parent_uqid
 when not matched then insert 
 (u.area_Code ,u.area_number ,u.uqid 
 ,u.parent_area_Code ,u.parent_area_number ,u.parent_uqid 
@@ -253,7 +262,6 @@ values
 ,sdo_cs.transform(s.geom_27700,4326) ,s.geom_27700 ,sdo_cs.transform(sdo_geom.sdo_mbr(s.geom_27700),4326))
 /
 ----------------------------------------------------------------------------------------------------
-
 REM ...spatial match district that contains the ward...look at level 7 areas who don not have a level 6 parent and do a spatial match
 
 REM rough match
@@ -282,7 +290,7 @@ set u.parent_area_code = s.parent_area_code
 ,   u.parent_uqid = s.parent_uqid
 /
 
-REM exact match
+REM exact match - can take time - might not find anything!
 merge into my_areas u
 using (
 select m.area_code, m.area_number, m.uqid, m.name
@@ -290,15 +298,23 @@ select m.area_code, m.area_number, m.uqid, m.name
 ,      MAX(m2.area_number) parent_area_number
 ,      MAX(m2.uqid) parent_uqid
 ,      MAX(m2.name) parent_name
+,      count(*) num_matches
 from my_areas m
 inner join my_area_codes c on c.area_code = m.parent_area_code
-inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level = m.area_level-1
+inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code 
+                      and m2.parent_area_number = m.parent_area_number 
+					  and m2.area_level = m.area_level-1
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
 and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
-and   sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25))>0
+--and   sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25))>0
+and   m.geom_27700 IS NOT NULL
+and   m2.geom_27700 IS NOT NULL
+and   m.area_code IN('CPC','LBW','DIW')
+and   m2.area_code IN('DIS','LBO')
+--and 1=2 --disabled because found nothing
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
 ) s
@@ -310,7 +326,7 @@ set u.parent_area_code = s.parent_area_code
 ,   u.parent_uqid = s.parent_uqid
 /
 
-REM best match
+REM best match -London
 merge into my_areas u
 using (
 with x as (
@@ -327,7 +343,51 @@ where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
 and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
-and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+--and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   m.geom_27700 IS NOT NULL
+and   m2.geom_27700 IS NOT NULL
+and   m.area_code IN('LBW')
+and   m2.area_code IN('LBO')
+), y as (
+select x.* 
+,      row_number() over (partition by area_code, area_number order by area desc) seq
+from   x
+where  area>0
+)
+select y.*
+from   y
+where  seq=1
+) s
+on (u.area_Code = s.area_Code
+and u.area_number = s.area_number)
+when matched then update
+set u.parent_area_code = s.parent_area_code
+,   u.parent_area_number = s.parent_area_number
+,   u.parent_uqid = s.parent_uqid
+/
+
+REM best match Not London --this can be slow
+merge into my_areas u
+using (
+with x as (
+select m.area_code, m.area_number, m.uqid, m.name
+,      (m2.area_code) parent_area_code
+,      (m2.area_number) parent_area_number
+,      (m2.uqid) parent_uqid
+,      (m2.name) parent_name
+,      sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25)) area
+from my_areas m
+inner join my_area_codes c on c.area_code = m.parent_area_code
+inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level = m.area_level-1
+where m.area_level  = 7
+and   c.area_level = m.area_level-2
+--and   m.parent_area_number = 49530
+and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+--and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   m.geom_27700 IS NOT NULL
+and   m2.geom_27700 IS NOT NULL
+and   m.area_code IN('CPC','DIW')
+and   m2.area_code IN('DIS')
 ), y as (
 select x.* 
 ,      row_number() over (partition by area_code, area_number order by area desc) seq
@@ -347,6 +407,19 @@ set u.parent_area_code = s.parent_area_code
 /
 
 
+REM unmatched types
+select distinct m.area_code, m2.area_code, m.parent_area_Code
+from my_areas m
+inner join my_area_codes c on c.area_code = m.parent_area_code
+inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level = m.area_level-1
+where m.area_level  = 7
+and   c.area_level = m.area_level-2
+--and   m.parent_area_number = 49530
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+--and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+/
+
+
 REM unmatched
 select m.area_code, m.area_number, m.uqid, m.name
 ,      MAX(m2.area_code) parent_area_code
@@ -362,6 +435,8 @@ and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
 --and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 --and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+--and   m.area_code IN('LBW')
+--and   m2.area_code IN('LBO')
 group by m.area_code, m.area_number, m.uqid, m.name
 /
 

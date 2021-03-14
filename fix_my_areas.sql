@@ -13,6 +13,69 @@ set p.num_children = (select NULLIF(count(*),0)
 /
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
+--idenify areas with same name and same parents --make CPC children of Wards where covered by wards
+column mbr_rel format a10
+column geom_rel format a10
+merge into my_areas u
+using (
+select m1.area_code parent_area_code, m1.area_number parent_area_number, m1.uqid parent_uqid
+,      m1.name
+,      m2.area_Code, m2.area_number, m2.uqid
+,      SDO_GEOM.RELATE(m1.geom,'determine',m2.geom) geom_rel
+from   my_areas m1
+,      my_areas m2
+where  m1.name = m2.name
+and    m1.area_code != m2.area_code
+and    m1.parent_area_code = m2.parent_area_code
+and    m1.parent_area_number = m2.parent_area_number
+and    m1.area_code NOT IN('AONB','CPC')
+and    m2.area_code IN('CPC')
+and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
+and    SDO_GEOM.RELATE(m1.geom,'COVERS+EQUAL',m2.geom) = 'COVERS+EQUAL'
+--and    m1.name = 'Meriden'
+--and rownum <= 100
+) s 
+ON (u.area_Code = s.area_code
+AND u.area_number = s.area_number)
+WHEN MATCHED THEN UPDATE
+SET u.parent_area_code = s.parent_area_code
+,   u.parent_area_number = s.parent_area_number
+,   u.parent_uqid = s.parent_uqid
+/
+
+--find other areas with matching names where one covers the other and match the covering the parent of the covered  by
+merge into my_areas u
+using (
+select m1.area_code parent_area_code, m1.area_number parent_area_number, m1.uqid parent_uqid
+,      m1.name
+,      m2.area_Code, m2.area_number, m2.uqid
+,      SDO_GEOM.RELATE(m1.geom,'determine',m2.geom) geom_rel
+from   my_areas m1
+,      my_areas m2
+where  m1.name = m2.name
+and    m1.area_code != m2.area_code
+and    m1.parent_area_code = m2.parent_area_code
+and    m1.parent_area_number = m2.parent_area_number
+and    m1.area_code NOT IN('AONB')
+and    m2.area_code NOT IN('AONB')
+and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
+and    SDO_GEOM.RELATE(m1.geom,'COVERS+EQUAL',m2.geom) = 'COVERS+EQUAL'
+) s 
+ON (u.area_Code = s.area_code
+AND u.area_number = s.area_number)
+WHEN MATCHED THEN UPDATE
+SET u.parent_area_code = s.parent_area_code
+,   u.parent_area_number = s.parent_area_number
+,   u.parent_uqid = s.parent_uqid
+/
+
+
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+
+
 --identify children with same name - no point adding them to activity_areas, but need to drill into their children
 select c.parent_area_code, c.parent_area_number, p.num_children, c.name, c.area_code, c.area_number, c.matchable, c.num_children
 from my_areas p, my_areas c
@@ -45,7 +108,7 @@ and c.matchable = 1
 --delete any activity areas matched to areas whose parent has the same name
 delete from activity_areas
 where (area_code, area_number) IN (
-select m.area_code, m.area_number
+select m.area_code, m.area_number --, m.name
 from my_areas m, activity_areas a
 where a.area_code = m.area_Code
 and a.area_number = m.area_number
