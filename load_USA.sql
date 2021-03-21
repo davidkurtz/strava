@@ -39,8 +39,8 @@ select area_Code, area_number, uqid, area_level, name
 from my_areas where name IN('United States of America')
 and area_code = 'CTRY'
 )
-select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
-                  ||LTRIM(TO_CHAR(x.id_1,'00')) area_number, x.iso||x.id_1 uqid, x.name_1 name, geom
+select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'1'
+                  ||LTRIM(TO_CHAR(x.id_1,'00')) area_number, x.iso||'A'||x.id_1 uqid, x.name_1 name, geom
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid
@@ -156,6 +156,10 @@ set parent_area_Code = 'GEOS'
 ,   parent_uqid = 'NE1159321393'
 where area_code = 'STAT' AND area_number IN(24410,24424,24448);
 
+update my_areas
+set name = 'United States of America'
+where name = 'United States';
+
 
 --merge counties into area
 merge into my_areas u
@@ -167,16 +171,16 @@ where area_code IN('STAT','FDIS')
 and parent_area_code = 'GEOS'
 and parent_area_number IN(1159321393,1159321395,1159321397)
 )
-select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))
-                  ||LTRIM(TO_CHAR(x.id_1,'00'))
-                  ||LTRIM(TO_CHAR(x.id_2,'00')) area_number, x.iso||x.id_2 uqid, x.name_2, geom
+select c.area_code, LTRIM(TO_CHAR(x.id_0,'000'))||'2'
+				  ||LTRIM(TO_CHAR(x.id_2,'000')) area_number, x.iso||'B'||x.id_2 uqid, x.name_2, geom
 , p.area_code parent_area_Code
 , p.area_number parent_area_number
 , p.uqid parent_uqid
 , 6 area_level
 from USA_adm2 x, my_area_codes c, p
 where c.description = x.type_2
-and p.area_number = x.id_1
+and p.area_number = LTRIM(TO_CHAR(x.id_0,'000'))||'1'
+                  ||LTRIM(TO_CHAR(x.id_1,'00'))
 ) s
 on (u.area_code = s.area_code
 and u.area_number = s.area_number)
@@ -209,42 +213,62 @@ set p.num_children = (select NULLIF(count(*),0)
   and   c.parent_uqid = p.uqid)
 /
 
+
+--activities with children identified
+select p2.activity_id, p1.area_code, p1.area_number, p1.name
+,                      c1.area_code, c1.area_number, c1.name
+from my_areas p1, activity_areas p2
+,    my_areas c1, activity_areas c2
+where p1.area_code = p2.area_code
+and p1.area_number = p2.area_number
+and p1.area_code = 'GEOS'
+and p1.area_number = 1159321393
+and p1.num_children > 0
+and c1.parent_area_code = p1.area_code
+and c1.parent_area_number = p1.area_number
+and c1.area_code = c2.area_code
+and c1.area_number = c2.area_number
+and c2.activity_id = p2.activity_id
+
+
 --areas with children, but none of children identified
-select a1.area_code, a1.area_number, a1.name, count(*)
-from my_areas a1, activity_areas b1
-where a1.area_code = b1.area_code
-and a1.area_number = b1.area_number
-and a1.num_children > 0
+select p1.area_code, p1.area_number, p1.name, count(*)
+from my_areas p1, activity_areas p2
+where p1.area_code = p2.area_code
+and p1.area_number = p2.area_number
+and p1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas a2, activity_areas b2
-  where a2.area_code = b2.area_code
-  and a2.area_number = b2.area_number
-  and b2.activity_id = b1.activity_id
-  and a2.parent_area_code = a1.area_code
-  and a2.parent_area_number = a1.area_number)
-group by a1.area_code, a1.area_number, a1.name
+  from my_areas c1, activity_areas c2
+  where c1.area_code = c2.area_code
+  and c1.area_number = c2.area_number
+  and c2.activity_id = p2.activity_id
+  and c1.parent_area_code = p1.area_code
+  and c1.parent_area_number = p1.area_number)
+group by p1.area_code, p1.area_number, p1.name
 /
+
+
 
 --analyse activities affected by new areas
 set serveroutput on
 BEGIN 
   FOR i IN(
-select a1.area_code, a1.area_number, a1.name, b1.activity_id
-from my_areas a1, activity_areas b1
-where a1.area_code = b1.area_code
-and a1.area_number = b1.area_number
-and a1.num_children > 0
+select p1.area_code, p1.area_number, p1.name, p2.activity_id
+from my_areas p1, activity_areas p2
+where p1.area_code = p2.area_code
+and p1.area_number = p2.area_number
+and p1.area_code = 'GEOS'
+and p1.area_number = 1159321393
+and p1.num_children > 0
 and not exists(
   select 'x'
-  from my_areas a2, activity_areas b2
-  where a2.area_code = b2.area_code
-  and a2.area_number = b2.area_number
-  and b2.activity_id = b1.activity_id
-  and a2.parent_area_code = a1.area_code
-  and a2.parent_area_number = a1.area_number)
-and a1.area_code = 'GEOS'
-and a1.area_number = 1159321393
+  from my_areas c1, activity_areas c2
+  where c1.area_code = c2.area_code
+  and c1.area_number = c2.area_number
+  and c2.activity_id = p2.activity_id
+  and c1.parent_area_code = p1.area_code
+  and c1.parent_area_number = p1.area_number)
 --and rownum = 1
   ) LOOP
     strava_pkg.activity_area_search(i.activity_id,i.area_code,i.area_number);
@@ -252,3 +276,4 @@ and a1.area_number = 1159321393
   END LOOP;
 END;
 /
+

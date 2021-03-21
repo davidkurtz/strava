@@ -82,6 +82,7 @@ from my_areas p, my_areas c
 where p.area_code = c.parent_area_code
 and p.area_number = c.parent_area_number
 and p.name = c.name
+and c.matchable >0
 order by c.name
 /
 
@@ -102,6 +103,7 @@ where p.area_code = c.parent_area_code
 and p.area_number = c.parent_area_number
 and p.name = c.name
 and c.matchable = 1
+and (c.num_children = 0 OR c.num_children IS NULL)
 ) 
 /
 
@@ -115,6 +117,22 @@ and a.area_number = m.area_number
 and m.matchable = 0
 group by m.area_code, m.area_number, m.name)
 /
+
+--any activity_areas for which no parent area recorded
+insert into activity_areas (activity_id, area_code, area_number)
+select DISTINCT c2.activity_id, p1.area_code, p1.area_number
+from   my_areas c1, activity_areas c2
+,      my_areas p1, activity_areas p2
+where  1=1
+and    c1.area_code = c2.area_code
+and    c1.area_number = c2.area_number
+and    p1.area_code = c1.parent_area_Code
+and    p1.area_number = c1.parent_area_number
+and    p1.area_code = p2.area_code(+)
+and    p1.area_number = p2.area_number(+)
+and    p2.area_code is null
+/
+
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

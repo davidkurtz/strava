@@ -23,7 +23,7 @@ END;
 --build text index with user_datastore
 Exec ctx_ddl.drop_preference('my_areas_lexer');  
 Exec ctx_ddl.drop_preference('my_areas_datastore'); 
-drop index my_areas_names_txtidx;
+drop index my_areas_name_txtidx;
 
 begin
  ctx_ddl.create_preference('my_areas_lexer', 'BASIC_LEXER');  
@@ -37,13 +37,13 @@ begin
 end;
 /
 
-drop index my_areas_names_txtidx;
-create index my_areas_names_txtidx on my_areas (name) indextype is ctxsys.context 
+drop index my_areas_name_txtidx;
+create index my_areas_name_txtidx on my_areas (name) indextype is ctxsys.context 
 parameters ('datastore my_areas_datastore lexer my_areas_lexer');
 -- sync(on commit) -- wont sync on commit because could be affected by hierarchy changes
 
 --manual sync
-exec ctx_ddl.sync_index('my_areas_names_txtidx');
+exec ctx_ddl.sync_index('my_areas_name_txtidx');
 
 
 ----------------------------------------------------------------------------------------------------

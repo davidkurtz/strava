@@ -75,15 +75,19 @@ clear
 #shp_load /tmp/strava/Data/GB/parish_region.shp 27700
 #shp_load /tmp/strava/Data/Supplementary_Ceremonial/Boundary-line-ceremonial-counties_region.shp 27700
 #shp_load /tmp/strava/Data/Wales/community_ward_region.shp 27700
+
 #shp_load /tmp/strava/pub_commcnc.shp 27700
 
-#shp_load /tmp/strava/AUT_adm1.shp 
-#shp_load /tmp/strava/AUT_adm1.shp 
+#shp_load /tmp/strava/IRL_adm1.shp 
 
-#BEL
-#CHE
-#DEU
-#ESP
+shp_load /tmp/strava/USA_adm1.shp 
+shp_load /tmp/strava/USA_adm2.shp 
+
+#shp_load /tmp/strava/NLD_adm1.shp 
+#shp_load /tmp/strava/NLD_adm2.shp 
+
+#shp_load /tmp/strava/AUT_adm1.shp 
+#shp_load /tmp/strava/AUT_adm2.shp 
 
 #shp_load /tmp/strava/FRA_adm1.shp 
 #shp_load /tmp/strava/FRA_adm2.shp 

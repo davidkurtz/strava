@@ -43,6 +43,7 @@ FUNCTION make_point
 FUNCTION name_heirarchy_fn
 (p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
+,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
 ) RETURN CLOB DETERMINISTIC;
 
 PROCEDURE name_heirarchy_txtidx
@@ -88,7 +89,7 @@ BEGIN
    ,      CASE WHEN m.geom_27700 IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom_27700,a.geom_27700,5), unit=>'unit=km') 
                WHEN m.geom       IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
-   ,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
+   --,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
    FROM   my_areas m
    ,      activities a
    WHERE  (  (p_query_type = 'P' AND parent_area_code = p_area_code AND parent_area_number = p_area_number) 
@@ -101,7 +102,7 @@ BEGIN
    and    SDO_GEOM.RELATE(a.geom,'anyinteract',m.geom) = 'TRUE'
   ) LOOP
     dbms_output.put_line(l_pad||'Found '||i.area_code||'-'||i.area_number||':'||i.name||','||TO_CHAR(i.geom_length,'9990.999')||' km');
-    IF i.area_level>0 OR i.num_children IS NULL THEN
+    IF (i.area_level>0 OR i.num_children IS NULL) AND (i.matchable > 0 OR i.num_children > 0) THEN
 	  BEGIN
         INSERT INTO activity_areas
         (activity_id, area_code, area_number, geom_length)
@@ -378,11 +379,13 @@ end make_point;
 FUNCTION name_heirarchy_fn
 (p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
+,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
 ) RETURN CLOB DETERMINISTIC is
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
 
   l_name_heirarchy CLOB;
+  l_last_name my_areas.name%TYPE := '';
   l_count INTEGER := 0;
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
@@ -399,11 +402,15 @@ BEGIN
   ) LOOP
     IF i.matchable >= 1 THEN
       l_count := l_count + 1;
-	  IF l_count > 1 THEN
-        l_name_heirarchy := l_name_heirarchy ||', '|| i.name;
+	  --dbms_output.put_line(l_count||':'||i.name||'='||l_last_name);
+	  IF l_count > 1 AND p_type = 'C' THEN
+	    IF i.name != l_last_name THEN --supress repeated names
+          l_name_heirarchy := l_name_heirarchy ||', '|| i.name;
+        END IF;
 	  ELSE
         l_name_heirarchy := i.name;
 	  END IF;
+      l_last_name := i.name;
 	END IF;
   END LOOP;
   --dbms_output.put_line(p_dataout);
@@ -419,6 +426,7 @@ PROCEDURE name_heirarchy_txtidx
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
 
+  l_last_name my_areas.name%TYPE := '';
   l_count INTEGER := 0;
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
@@ -437,12 +445,15 @@ BEGIN
       --dbms_output.put_line(i.name);
       l_count := l_count + 1;
 	  IF l_count > 1 THEN
-        p_dataout := p_dataout ||', '|| i.name;
+	    IF i.name != l_last_name THEN --supress repeated names
+          p_dataout := p_dataout ||', '|| i.name;
+        END IF;
 	  ELSE
         p_dataout := i.name;
 	  END IF;
       --dbms_lob.writeappend(p_dataout, length(i.name), i.name);
-	END IF;
+      l_last_name := i.name;
+    END IF;
   END LOOP;
 
   --dbms_output.put_line(p_dataout);
