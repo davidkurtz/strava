@@ -455,7 +455,6 @@ BEGIN
       l_last_name := i.name;
     END IF;
   END LOOP;
-
   --dbms_output.put_line(p_dataout);
   dbms_application_info.set_module(module_name=>l_module
                                   ,action_name=>l_action);

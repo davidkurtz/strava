@@ -277,7 +277,7 @@ inner join my_area_codes c on c.area_code = m.parent_area_code
 inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level = m.area_level-1
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
---and   m.parent_area_number = 49530
+--and   m.parent_area_number = 44204 /*Norts Herts*/
 and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
