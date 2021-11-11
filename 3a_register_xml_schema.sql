@@ -1,6 +1,6 @@
 REM 3a_register_xml_schema.sql
 spool 3a_register_xml_schema
-connect strava/strava@oracle_pdb
+--connect strava/strava@oracle_pdb
 set serveroutput on
 
 delete from plan_table WHERE statement_id = 'XSD';

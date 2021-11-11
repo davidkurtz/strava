@@ -1,7 +1,7 @@
 rem 1b_create_activities_ext.sql
 spool 1b_create_activities_ext
 
-REM drop table strava.activities_ext purge;
+drop table strava.activities_ext purge;
 create table strava.activities_ext
 (Activity_ID NUMBER
 ,Activity_Date DATE
@@ -10,6 +10,7 @@ create table strava.activities_ext
 ,Activity_Description VARCHAR2(200)
 ,Elapsed_Time NUMBER
 ,Distance_km NUMBER
+,Max_Heart_Rate NUMBER
 ,Relative_Effort NUMBER
 ,Commute_char VARCHAR2(5)
 ,Activity_Gear VARCHAR2(100)
@@ -31,7 +32,7 @@ create table strava.activities_ext
 ,Average_Negative_Grade NUMBER
 ,Max_Cadence NUMBER
 ,Average_Cadence NUMBER
-,Max_Heart_Rate NUMBER
+,Max_Heart_Rate2 NUMBER
 ,Average_Heart_Rate NUMBER
 ,Max_Watts NUMBER
 ,Average_Watts NUMBER
@@ -80,7 +81,9 @@ create table strava.activities_ext
 ,jump_count NUMBER
 ,total_grit NUMBER
 ,avg_flow NUMBER
-,flagged VARCHAR2(10))
+,flagged VARCHAR2(10)
+,Avg_Elapsed_Speed NUMBER
+,Dirt_Distance NUMBER)
 ORGANIZATION EXTERNAL
 (TYPE ORACLE_LOADER
  DEFAULT DIRECTORY strava
@@ -93,10 +96,14 @@ ORGANIZATION EXTERNAL
   MISSING FIELD VALUES ARE NULL
   REJECT ROWS WITH ALL NULL FIELDS
   NULLIF = BLANKS
+  
+ 
+  
 (Activity_ID,Activity_Date date "DD Mon yyyy,HH24:mi:ss"
 ,Activity_Name,Activity_Type,Activity_Description
 ,Elapsed_Time,Distance_km
 ,Relative_Effort
+,Max_Heart_Rate
 ,Commute_char
 ,Activity_Gear
 ,Filename
@@ -105,7 +112,7 @@ ORGANIZATION EXTERNAL
 ,Elevation_Gain,Elevation_Loss,Elevation_Low,Elevation_High,Max_Grade
 ,Average_Grade,Average_Positive_Grade,Average_Negative_Grade
 ,Max_Cadence,Average_Cadence
-,Max_Heart_Rate,Average_Heart_Rate,Max_Watts,Average_Watts,Calories
+,Max_Heart_Rate2,Average_Heart_Rate,Max_Watts,Average_Watts,Calories
 ,Max_Temperature,Average_Temperature
 ,Relative_Effort2
 ,Total_Work
@@ -128,7 +135,9 @@ ORGANIZATION EXTERNAL
 ,Precipitation_Probability,Precipitation_Type
 ,Cloud_Cover,Weather_Visibility,UV_Index,Weather_Ozone
 ,jump_count,total_grit,avg_flow
-,flagged))
+,flagged
+,Avg_Elapsed_Speed 
+,Dirt_Distance))
 LOCATION ('activities.csv')
 ) REJECT LIMIT 5
 /

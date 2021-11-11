@@ -1,15 +1,12 @@
-REM 4b_allswains.sql
-
+REM 4c_1swains.sql
+Set lines 180 pages 99 timi off
 alter session set statistics_level=ALL;
 alter session set nls_date_Format = 'hh24:mi:ss dd.mm.yyyy';
 break on activity_id skip 1
 compute sum of sum_dist on activity_id
 compute sum of num_pt on activity_id
 compute sum of sum_secs on activity_id
-Set lines 180 pages 50 timi on
-Column activity_id heading 'Activity|ID'
-column geom_id heading 'Geom|ID' format 999
-column seq heading '#' format 9
+Column activity_id heading 'Activity|ID' format 9999999999
 Column activity_name format a15
 column time format a20
 column lat format 999.99999999
@@ -20,7 +17,7 @@ column sdo_relate format a10
 column num_pts heading 'Num|Pts' format 99999
 column sum_dist heading 'Dist.|(km)' format 999.999
 column sum_secs heading 'Secs' format 9999
-column avg_speed heading 'Avg|Speed|(kmph)' format 99.9
+column avg_speed heading 'Avg|Speed|(kph)' format 99.9
 column ele_gain heading 'Ele|Gain|(m)' format 9999.9
 column ele_loss heading 'Ele|Loss|(m)' format 9999.9
 column avg_grade heading 'Avg|Grade|%' format 99.9
@@ -28,50 +25,16 @@ column min_ele heading 'Min|Ele|(m)' format 999.9
 column max_ele heading 'Max|Ele|(m)' format 999.9
 column avg_hr heading 'Avg|HR' format 999
 column max_hr heading 'Max|HR' format 999
-DROP TABLE allswains PURGE;
-CREATE TABLE allswains
-(activity_id NUMBER NOT NULL
-,geom_id NUMBER NOT NULL
-,seq NUMBER NOT NULL
-,min_time DATE
-,max_time DATE
-,sum_dist NUMBER
-,sum_secs NUMBER
-,avg_speed NUMBER
-,ele_gain NUMBER
-,ele_loss NUMBER
-,avg_grade NUMBER
-,min_ele NUMBER
-,max_ele NUMBER
-,avg_Hr NUMBER
-,max_hr NUMBER
-,num_pts NUMBER
-);
-alter table allswains ADD CONSTRAINT allswains_pk PRIMARY KEY (activity_id, geom_id, seq);
-TRUNCATE TABLE allswains;
-
-BEGIN
-  FOR i IN (
-    SELECT a.activity_id, g.geom_id
-	FROM   activities a, my_geometries g
-	WHERE  a.activity_type = 'Ride'
-	AND    g.geom_id = 2
-	AND    SDO_GEOM.RELATE(a.mbr,'anyinteract',g.mbr) = 'TRUE'
---	AND rownum <= 30
-	MINUS SELECT activity_id, geom_id FROM allswains
-  ) LOOP
-
-INSERT INTO allswains
-(activity_id, geom_id, seq, min_time, max_time, sum_dist, sum_secs, avg_speed, ele_gain, ele_loss, avg_grade, min_ele, max_ele, avg_Hr, max_hr, num_pts)
+set timi on 
+spool 4c_1swains
 WITH geo as ( /*route geometry to compare to*/
 select /*MATERIALIZE*/ g.*, 25 tol
 ,      sdo_geom.sdo_length(geom, unit=>'unit=m') geom_length
 from   my_geometries g
-where  geom_id = i.geom_id /*Swains World Route*/
+where  geom_id = 2 /*Swains World Route*/
 ), a as ( /*extract all points in activity*/
-SELECT a.activity_id, g.geom_id, g.geom g_geom, g.tol, g.geom_length
-,      EXTRACTVALUE(VALUE(t), 'trkpt/time') time_string
---,      TO_DATE(EXTRACTVALUE(VALUE(t), 'trkpt/time'),'YYYY-MM-DD"T"HH24:MI:SS"Z"') time
+SELECT a.activity_id, g.geom g_geom, g.tol, g.geom_length
+,      TO_DATE(EXTRACTVALUE(VALUE(t), 'trkpt/time'),'YYYY-MM-DD"T"HH24:MI:SS"Z"') time
 ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lat')) lat
 ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lon')) lng
 ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/ele')) ele
@@ -84,16 +47,11 @@ FROM   activities a,
        ,'xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"'
        ))) t
 Where  a.activity_type = 'Ride'
-And    a.activity_id = i.activity_id
+And    a.activity_id IN(4468006769)
+--And    a.activity_date >= TO_DATE('01122020','DDMMYYYY')
 and    SDO_GEOM.RELATE(a.geom,'anyinteract',g.geom,g.tol) = 'TRUE' /*activity has relation to reference geometry*/
 ), b as ( /*smooth elevation*/
 Select a.*
-,      CASE 
-         WHEN time_string LIKE '____-__-__T__:__:__Z' 
-         THEN TO_DATE(time_string,'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-         WHEN time_string like '____-__-__T__:__:__+__:__' 
-         THEN cast(to_timestamp_tz(time_string,'yyyy-mm-dd"T"hh24:mi:ss"+"TZH:TZM') as date)
-       END time
 ,      avg(ele) over (partition by activity_id order by time rows between 2 preceding and 2 following) avg_ele
 From   a
 ), c as ( /*last point*/
@@ -127,8 +85,7 @@ select f.*
 from f
 where  sdo_relate = 'TRUE'
 )
-select activity_id, geom_id, sdo_seq
-, min(time) min_time, max(time) max_time
+select activity_id, min(time), max(time)
 , sum(dist)/1000 sum_dist
 , sum(secs) sum_secs
 , 3.6*sum(dist)/sum(secs) avg_speed
@@ -141,35 +98,11 @@ select activity_id, geom_id, sdo_seq
 , max(hr) max_hr
 , count(*) num_pts
 from   g
-group by activity_id, geom_id, sdo_seq, g.geom_length
-having sum(dist)>= g.geom_length/2 /*make sure line we find is longer than half route to prevent fragmentation*/;
-    commit;
-  END LOOP;
-END;
+group by activity_id, sdo_seq, g.geom_length
+having sum(dist)>= g.geom_length/2 /*make sure line we find is longer than half route to prevent fragmentation*/
+order by 2
 /
-
-spool 4b_allswains_plan
+spool 4c_1swains_plan
 select * from table(dbms_xplan.display_cursor(null,null,'ADVANCED +IOSTATS -PROJECTION +ADAPTIVE'))
 /
-spool 4b_allswains
-select count(distinct activity_id), count(*)
-from allswains
-/
-select * from allswains 
-order by min_time
-/
 spool off
-
-/*
-select sql_id, count(*) ash_Secs
-from v$active_Session_history
-where sql_id IS NOT NULL
-group by sql_id
-order by ash_secs desc
-fetch first 3 rows only
-/
-
-set pages 99 lines 180
-select * from table(dbms_xplan.display_cursor('45d6nkzs1b8tp',null,'ADVANCED +IOSTATS -PROJECTION +ADAPTIVE'));
-select * from table(dbms_xplan.display_cursor('629tp8hfyyuw1',null,'ADVANCED +IOSTATS -PROJECTION +ADAPTIVE'));
-*/

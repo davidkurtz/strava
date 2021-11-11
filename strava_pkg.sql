@@ -1,6 +1,6 @@
 REM strava_pkg.sql
 rollback;
-connect strava/strava@oracle_pdb
+REM connect strava/strava@oracle_pdb
 
 insert into user_sdo_geom_metadata (table_name,column_name,diminfo,srid)
 values ( 
@@ -264,7 +264,7 @@ BEGIN
   
 IF l_num_rows > 0 THEN
   UPDATE activities
-  SET    gpx = XMLTYPE(l_gpx), geom = null, geom_27700 = null, num_pts = 0, xmlns = NULL
+  SET    gpx = XMLTYPE(l_gpx), geom = null, geom_27700 = null, num_pts = null, xmlns = NULL
   WHERE  activity_id = p_activity_id
   RETURNING extractvalue(gpx,'/gpx/@creator', 'xmlns="http://www.topografix.com/GPX/1/0"') 
   ,         extractvalue(gpx,'/gpx/@creator', 'xmlns="http://www.topografix.com/GPX/1/1"') 
@@ -273,7 +273,7 @@ IF l_num_rows > 0 THEN
 END IF;
   
 IF l_num_rows > 0 AND l_xmlns1 IS NOT NULL THEN
-  dbms_output.put_line('xmlns 1='||l_xmlns1);
+--dbms_output.put_line('xmlns 1.1='||l_xmlns1);
   BEGIN
     UPDATE activities a
     SET geom = mdsys.sdo_geometry(2002,4326,null,mdsys.sdo_elem_info_array(1,2,1),
@@ -297,8 +297,8 @@ IF l_num_rows > 0 AND l_xmlns1 IS NOT NULL THEN
 	  dbms_output.put_line('Exception:'||sqlerrm);
 	  l_num_rows := 0;
   END;
-ELSIF l_num_pts = 0 AND l_xmlns0 IS NOT NULL THEN
-  dbms_output.put_line('xmlns 0='||l_xmlns0);
+ELSIF l_num_rows > 0 AND l_xmlns0 IS NOT NULL THEN
+--dbms_output.put_line('xmlns 1.0='||l_xmlns0);
   UPDATE activities a
   SET    geom = mdsys.sdo_geometry(2002,4326,null,mdsys.sdo_elem_info_array(1,2,1),
   cast(multiset(

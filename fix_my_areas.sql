@@ -13,7 +13,7 @@ set p.num_children = (select NULLIF(count(*),0)
 /
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
---idenify areas with same name and same parents --make CPC children of Wards where covered by wards
+--identify areas with same name and same parents --make CPC children of Wards where covered by wards
 column mbr_rel format a10
 column geom_rel format a10
 merge into my_areas u

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="EasyGPS 5.79 using Windows Tablet" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.topografix.com/GPX/gpx_style/0/2 http://www.topografix.com/GPX/gpx_style/0/2/gpx_style.xsd http://www.topografix.com/GPX/gpx_overlay/0/3 http://www.topografix.com/GPX/gpx_overlay/0/3/gpx_overlay.xsd http://www.topografix.com/GPX/gpx_modified/0/1 http://www.topografix.com/GPX/gpx_modified/0/1/gpx_modified.xsd">
+<metadata>
+<bounds minlat="51.56708055" minlon="-0.14832964" maxlat="51.56960971" maxlon="-0.14592102"/>
+<extensions>
+<time xmlns="http://www.topografix.com/GPX/gpx_modified/0/1">2021-01-06T13:00:49.495Z</time>
+</extensions>
+</metadata>
+<wpt lat="51.56960971" lon="-0.14771273">
+<type>Waypoint</type>
+</wpt>
+<wpt lat="51.56708055" lon="-0.14592102">
+<type>Waypoint</type>
+</wpt>
+<wpt lat="51.56709055" lon="-0.14674177">
+<type>Waypoint</type>
+</wpt>
+<wpt lat="51.56940798" lon="-0.14832964">
+<type>Waypoint</type>
+</wpt>
+<wpt lat="51.56960137" lon="-0.14772346">
+<type>Waypoint</type>
+</wpt>
+<rte>
+<name>Swain's World</name>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/3">
+<label_text>Swain's World</label_text>
+</label>
+<line xmlns="http://www.topografix.com/GPX/gpx_style/0/2">
+<color>ff00ff</color>
+<opacity>1.00</opacity>
+<width>2.0000</width>
+<pattern>Solid</pattern>
+</line>
+</extensions>
+<rtept lat="51.56960971" lon="-0.14771273">
+<type>Waypoint</type>
+</rtept>
+<rtept lat="51.56708055" lon="-0.14592102">
+<type>Waypoint</type>
+</rtept>
+<rtept lat="51.56709055" lon="-0.14674177">
+<type>Waypoint</type>
+</rtept>
+<rtept lat="51.56940798" lon="-0.14832964">
+<type>Waypoint</type>
+</rtept>
+<rtept lat="51.56960137" lon="-0.14772346">
+<type>Waypoint</type>
+</rtept>
+</rte>
+<extensions>
+</extensions>
+</gpx>

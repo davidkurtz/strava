@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="ViewRanger - //www.viewranger.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <rte>
+    <name><![CDATA[Swain's World]]></name>
+    <rtept lat="51.567076879686" lon="-0.14651114074474"></rtept>
+    <rtept lat="51.567297957247" lon="-0.14649236528162"></rtept>
+    <rtept lat="51.567563048851" lon="-0.14657819597011"></rtept>
+    <rtept lat="51.568016535308" lon="-0.14680618373636"></rtept>
+    <rtept lat="51.568253280116" lon="-0.1469751629043"></rtept>
+    <rtept lat="51.568870144602" lon="-0.14754379121545"></rtept>
+    <rtept lat="51.569488667885" lon="-0.14807218639139"></rtept>
+  </rte>
+</gpx>
