@@ -40,13 +40,13 @@ FUNCTION make_point
 ,latitude  in number
 ) RETURN sdo_geometry DETERMINISTIC;
 
-FUNCTION name_heirarchy_fn
+FUNCTION name_hierarchy_fn
 (p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
 ,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
 ) RETURN CLOB DETERMINISTIC;
 
-PROCEDURE name_heirarchy_txtidx
+PROCEDURE name_hierarchy_txtidx
 (p_rowid in rowid
 ,p_dataout IN OUT NOCOPY CLOB
 );
@@ -376,7 +376,7 @@ begin
                                   ,action_name=>l_action);
 end make_point;
 ----------------------------------------------------------------------------------------------------
-FUNCTION name_heirarchy_fn
+FUNCTION name_hierarchy_fn
 (p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
 ,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
@@ -384,14 +384,14 @@ FUNCTION name_heirarchy_fn
   l_module VARCHAR2(64);
   l_action VARCHAR2(64);
 
-  l_name_heirarchy CLOB;
+  l_name_hierarchy CLOB;
   l_last_name my_areas.name%TYPE := '';
   l_count INTEGER := 0;
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
   dbms_application_info.set_module(module_name=>k_module
-                                  ,action_name=>'name_heirarchy_fn');
+                                  ,action_name=>'name_hierarchy_fn');
 								  
   FOR i IN (
     SELECT area_code, area_number, name, matchable
@@ -405,10 +405,10 @@ BEGIN
 	  --dbms_output.put_line(l_count||':'||i.name||'='||l_last_name);
 	  IF l_count > 1 AND p_type = 'C' THEN
 	    IF i.name != l_last_name THEN --supress repeated names
-          l_name_heirarchy := l_name_heirarchy ||', '|| i.name;
+          l_name_hierarchy := l_name_hierarchy ||', '|| i.name;
         END IF;
 	  ELSE
-        l_name_heirarchy := i.name;
+        l_name_hierarchy := i.name;
 	  END IF;
       l_last_name := i.name;
 	END IF;
@@ -416,10 +416,10 @@ BEGIN
   --dbms_output.put_line(p_dataout);
   dbms_application_info.set_module(module_name=>l_module
                                   ,action_name=>l_action);
-  RETURN l_name_heirarchy;
-END name_heirarchy_fn;
+  RETURN l_name_hierarchy;
+END name_hierarchy_fn;
 ----------------------------------------------------------------------------------------------------
-PROCEDURE name_heirarchy_txtidx
+PROCEDURE name_hierarchy_txtidx
 (p_rowid in rowid
 ,p_dataout IN OUT NOCOPY CLOB
 ) IS
@@ -432,7 +432,7 @@ BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
   dbms_application_info.set_module(module_name=>k_module
-                                  ,action_name=>'name_heirarchy_txtidx');
+                                  ,action_name=>'name_hierarchy_txtidx');
 								  
   FOR i IN (
     SELECT area_code, area_number, name, matchable
@@ -458,7 +458,7 @@ BEGIN
   --dbms_output.put_line(p_dataout);
   dbms_application_info.set_module(module_name=>l_module
                                   ,action_name=>l_action);
-END name_heirarchy_txtidx;
+END name_hierarchy_txtidx;
 ----------------------------------------------------------------------------------------------------
 END strava_pkg;
 /

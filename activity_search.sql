@@ -1,12 +1,12 @@
 WITH x AS (
-SELECT a.activity_id, m.area_code, m.area_number, m.parent_area_code, m.parent_area_number, m.name, m.name_heirarchy
+SELECT a.activity_id, m.area_code, m.area_number, m.parent_area_code, m.parent_area_number, m.name, m.name_hierarchy
 FROM   my_areas m, activity_areas a
 WHERE  m.area_Code = a.area_code
 AND    m.area_number = a.area_number
 AND    CONTAINS(name,'berkshire',1)>0
 ) 
 SELECT a.activity_id, a.activity_date, a.activity_name, a.activity_type, a.distance_km
-,      x.area_Code, x.area_number, x.name, x.name_heirarchy
+,      x.area_Code, x.area_number, x.name, x.name_hierarchy
 FROM   x, activities a
 WHERE  x.activity_id = a.activity_id
 AND    a.activity_date between TO_DATE('01022019','DDMMYYYY') and TO_DATE('28022019','DDMMYYYY')
@@ -35,7 +35,7 @@ BEGIN
   WHERE  area_code = 'WAT'
   And    area_number = '15806';
 
-  strava_pkg.name_heirarchy_txtidx(l_rowid, l_clob);
+  strava_pkg.name_hierarchy_txtidx(l_rowid, l_clob);
   dbms_output.put_line(l_clob);
 END;
 /
