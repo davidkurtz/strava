@@ -85,7 +85,7 @@ and    m.parent_area_code = p.area_code
 and    mc.area_code = 'GEOS'
 and    mc.parent_area_Code = p.area_Code
 and    mc.parent_area_number = p.area_number
-and    sdo_geom.relate(mc.mbr,'COVERS+CONTAINS+EQUAL',m.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and    SDO_ANYINTERACT(mc.geom, m.geom) = 'TRUE'
 )
 select * from x where num_matches = 1
 ) s
@@ -122,8 +122,8 @@ and    mc.parent_area_Code = p.area_Code
 and    mc.parent_area_number = p.area_number
 --and    mc.area_Number = 1159321395
 --and    m.area_number = 12
-and    sdo_geom.relate(mc.geom,'COVERS+CONTAINS+EQUAL',m.geom) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
---and    sdo_geom.relate(mc.mbr,'COVERS+CONTAINS+EQUAL',m.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and    sdo_geom.relate(mc.geom,'COVERS+CONTAINS+EQUAL',m.geom) = 'COVERS+CONTAINS+EQUAL' 
+and    SDO_ANYINTERACT(mc.geom, m.geom) = 'TRUE'
 and 1=2
 )
 select * from x 
@@ -271,7 +271,7 @@ and not exists(
   and c1.parent_area_number = p1.area_number)
 --and rownum = 1
   ) LOOP
-    strava_pkg.activity_area_search(i.activity_id,i.area_code,i.area_number);
+    strava_pkg.activity_area_hsearch(i.activity_id,i.area_code,i.area_number);
     commit;
   END LOOP;
 END;

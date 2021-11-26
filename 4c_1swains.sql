@@ -49,7 +49,7 @@ FROM   activities a,
 Where  a.activity_type = 'Ride'
 And    a.activity_id IN(4468006769)
 --And    a.activity_date >= TO_DATE('01122020','DDMMYYYY')
-and    SDO_GEOM.RELATE(a.geom,'anyinteract',g.geom,g.tol) = 'TRUE' /*activity has relation to reference geometry*/
+AND    SDO_ANYINTERACT(a.geom, g.geom) = 'TRUE' /*activity has relation to reference geometry*/
 ), b as ( /*smooth elevation*/
 Select a.*
 ,      avg(ele) over (partition by activity_id order by time rows between 2 preceding and 2 following) avg_ele

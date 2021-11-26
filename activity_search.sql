@@ -22,7 +22,7 @@ ORDER BY a.activity_date
 
 
 set serveroutput on
-exec strava_pkg.activity_area_search(4347280348);
+exec strava_pkg.activity_area_hsearch(4347280348);
 
 set serveroutput on
 DECLARE

@@ -69,7 +69,7 @@ BEGIN
 	AND    g.geom_id = 2
 --  And    a.activity_date >= TO_DATE('01072019','DDMMYYYY')
     AND    a.xmlns = 'xmlns="http://www.topografix.com/GPX/1/1"'
-	AND    SDO_GEOM.RELATE(a.mbr,'anyinteract',g.mbr) = 'TRUE'
+	AND    SDO_ANYINTERACT(a.geom, g.geom) = 'TRUE'
 --  and    a.activity_name like 'Loop%'
 	and not a.activity_id IN(SELECT activity_id FROM allswains)
     ORDER BY a.activity_date DESC
@@ -100,7 +100,7 @@ FROM   activities a,
        ))) t
 Where  a.activity_type = 'Ride'
 And    a.activity_id = i.activity_id
-and    SDO_GEOM.RELATE(a.geom,'anyinteract',g.geom,g.tol) = 'TRUE' /*activity has relation to reference geometry*/
+AND    SDO_ANYINTERACT(a.geom, g.geom) = 'TRUE' /*activity has relation to reference geometry*/
 ), b as ( /*convert time string to date*/
 Select a.*
 ,      CASE 

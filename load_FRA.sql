@@ -248,7 +248,7 @@ and a1.area_code = 'GEOU'
 and a1.area_number = 1159320651
 --and rownum = 1
   ) LOOP
-    strava_pkg.activity_area_search(i.activity_id,i.area_code,i.area_number);
+    strava_pkg.activity_area_hsearch(i.activity_id,i.area_code,i.area_number);
     commit;
   END LOOP;
 END;

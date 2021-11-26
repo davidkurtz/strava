@@ -278,7 +278,8 @@ inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 44204 /*Norts Herts*/
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
 ) s
@@ -307,9 +308,9 @@ inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
---and   sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25))>0
 and   m.geom_27700 IS NOT NULL
 and   m2.geom_27700 IS NOT NULL
 and   m.area_code IN('CPC','LBW','DIW')
@@ -342,8 +343,9 @@ inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
---and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' 
 and   m.geom_27700 IS NOT NULL
 and   m2.geom_27700 IS NOT NULL
 and   m.area_code IN('LBW')
@@ -382,8 +384,9 @@ inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent
 where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.parent_area_number = 49530
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
---and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   m.geom_27700 IS NOT NULL
 and   m2.geom_27700 IS NOT NULL
 and   m.area_code IN('CPC','DIW')
@@ -455,7 +458,8 @@ where m.area_level  = 7
 and   c.area_level = m.area_level-2
 --and   m.area_number = 49413
 --and   m.parent_area_number = 49530
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' 
 order by 1,2,3
 /
@@ -571,7 +575,8 @@ inner join my_area_codes c on c.area_code = m.parent_area_code
 inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level <= m.area_level-2
 where m.area_level  = 5
 and   c.area_level <= m.area_level-2
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
 ) s
@@ -597,8 +602,9 @@ inner join my_area_codes c on c.area_code = m.parent_area_code
 inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level <= m.area_level-2
 where m.area_level  = 5
 and   c.area_level <= m.area_level-2
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
-and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' 
 --and   sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25))>0
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
@@ -705,7 +711,8 @@ inner join my_area_codes c on c.area_code = m.parent_area_code
 inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level <= m.area_level-2
 where m.area_code = 'AONB'
 and   c.area_level <= m.area_level-2
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 group by m.area_code, m.area_number, m.uqid, m.name
 having count(*) = 1
 ) s
@@ -731,7 +738,8 @@ inner join my_area_codes c on c.area_code = m.parent_area_code
 inner join my_areas m2 on m2.parent_area_Code = m.parent_area_Code and m2.parent_area_number = m.parent_area_number and m2.area_level <= m.area_level-2
 where m.area_code = 'AONB'
 and   c.area_level <= m.area_level-2
-and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(m2.geom, m.geom) = 'TRUE'
+--and   sdo_geom.relate(m2.mbr,'COVERS+CONTAINS+EQUAL',m.mbr,10) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   sdo_geom.relate(m2.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700,25) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and   sdo_geom.sdo_area(sdo_geom.sdo_intersection(m2.geom_27700,m.geom_27700,25))>0
 group by m.area_code, m.area_number, m.uqid, m.name
@@ -796,7 +804,8 @@ and    m.parent_area_number IN(1159320743 --England
 and    mc.area_code = 'CCTY'
 and    mc.parent_area_Code = m.parent_area_Code
 and    mc.parent_area_number = m.parent_area_number
-and    sdo_geom.relate(mc.mbr,'COVERS+CONTAINS+EQUAL',m.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
+and   SDO_ANYINTERACT(mc.geom, m.geom) = 'TRUE'
+--and    sdo_geom.relate(mc.mbr,'COVERS+CONTAINS+EQUAL',m.mbr) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and    sdo_geom.relate(mc.geom_27700,'COVERS+CONTAINS+EQUAL',m.geom_27700) = 'COVERS+CONTAINS+EQUAL' /*coarse filter first*/
 and    mc.name = 'Berkshire'
 )

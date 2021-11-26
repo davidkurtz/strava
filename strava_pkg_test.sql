@@ -8,7 +8,7 @@ where activity_Date > TO_DATE('01.12.20','DD.MM.YY');
 
 rollback;
 set serveroutput on timi on
---exec strava_pkg.activity_area_search(4516029899);
+--exec strava_pkg.activity_area_hsearch(4516029899);
 
 --process unmatched activities
 set pages 99 lines 180 timi on serveroutput on
@@ -28,7 +28,7 @@ num_pts
 desc
 --fetch first 10 rows only
   ) LOOP
-    strava_pkg.activity_area_search(i.activity_id);
+    strava_pkg.activity_area_hsearch(i.activity_id);
     commit;
   END LOOP;
 END;

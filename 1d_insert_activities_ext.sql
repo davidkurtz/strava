@@ -1,7 +1,7 @@
 REM 1d_insert_activities_ext
 spool 1d_insert_activities_ext
-REM delete changed activities so can reload them
 
+REM delete activity_areas of changed activities so can recalculate them
 DELETE FROM activity_areas 
 WHERE  activity_id in(
   SELECT a.activity_id
@@ -12,6 +12,7 @@ WHERE  activity_id in(
   or     a.elapsed_time != e.elapsed_time))
 /
 
+REM delete changed activities so can reload them
 delete from activities 
 WHERE  activity_id in(
   SELECT a.activity_id
@@ -24,18 +25,20 @@ WHERE  activity_id in(
 
 BEGIN
  FOR i IN(
-  SELECT e.activity_id, e.activity_name, e.activity_description, e.activity_gear
+  SELECT e.activity_id, e.activity_name, e.activity_description, e.activity_gear, e.activity_type
   from   strava.activities a
   ,      strava.activities_ext e
   where  a.activity_id = e.activity_id
   and    (a.activity_name != e.activity_name
   or      a.activity_description != e.activity_description
-  or      a.activity_gear != e.activity_gear)
+  or      a.activity_gear != e.activity_gear
+  or      a.activity_type != e.activity_type)
  ) LOOP
   UPDATE activities a
   SET    a.activity_name = i.activity_name
   ,      a.activity_description = i.activity_description
   ,      a.activity_gear = i.activity_gear
+  ,      a.activity_type = i.activity_type
   WHERE  a.activity_id = i.activity_id;
  END LOOP;
 END;
@@ -68,6 +71,7 @@ where not exists(
   from   strava.activities a
   where  a.activity_id = e.activity_id)
 /
+
 
 UPDATE activities
 SET filename = REPLACE(filename,'.fit.gz','.gpx.gz')

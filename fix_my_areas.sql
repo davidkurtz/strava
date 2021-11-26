@@ -30,7 +30,8 @@ and    m1.parent_area_code = m2.parent_area_code
 and    m1.parent_area_number = m2.parent_area_number
 and    m1.area_code NOT IN('AONB','CPC')
 and    m2.area_code IN('CPC')
-and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
+and    SDO_ANYINTERACT(m1.geom, m2.geom) = 'TRUE'
+--and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
 and    SDO_GEOM.RELATE(m1.geom,'COVERS+EQUAL',m2.geom) = 'COVERS+EQUAL'
 --and    m1.name = 'Meriden'
 --and rownum <= 100
@@ -58,7 +59,8 @@ and    m1.parent_area_code = m2.parent_area_code
 and    m1.parent_area_number = m2.parent_area_number
 and    m1.area_code NOT IN('AONB')
 and    m2.area_code NOT IN('AONB')
-and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
+and    SDO_ANYINTERACT(m1.geom, m2.geom) = 'TRUE'
+--and    SDO_GEOM.RELATE(m1.mbr,'COVERS+EQUAL',m2.mbr) = 'COVERS+EQUAL'
 and    SDO_GEOM.RELATE(m1.geom,'COVERS+EQUAL',m2.geom) = 'COVERS+EQUAL'
 ) s 
 ON (u.area_Code = s.area_code

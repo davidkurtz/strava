@@ -29,7 +29,7 @@ column max_hr heading 'Max|HR' format 999
 DROP TABLE allswains PURGE;
 CREATE TABLE allswains AS
 WITH geo as ( /*route geometry to compare to*/
-select /*MATERIALIZE*/ g.*, 25 tol
+select /*MATERIALIZE*/ g.*
 ,      sdo_geom.sdo_length(geom, unit=>'unit=m') geom_length
 from   my_geometries g
 where  geom_id = 2 /*Swains World Route*/
@@ -50,7 +50,7 @@ FROM   activities a,
        ))) t
 Where  a.activity_type = 'Ride'
 --And    a.activity_id IN(4468006769)
-and    SDO_GEOM.RELATE(a.geom,'anyinteract',g.geom,g.tol) = 'TRUE' /*activity has relation to reference geometry*/
+and    SDO_ANYINTERACT(a.geom, g.geom) = 'TRUE'
 ), b as ( /*smooth elevation*/
 Select a.*
 ,      CASE 

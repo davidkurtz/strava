@@ -33,7 +33,7 @@ BEGIN
     --FETCH FIRST 50 ROWS ONLY
   ) LOOP
     dbms_output.put_line(i.activity_id||', '||i.activity_date||', '||i.activity_name||', '||i.distance_km||'km, '||i.num_pts||' points');
-    strava_pkg.activity_area_search(i.activity_id);
+    strava_pkg.activity_area_hsearch(i.activity_id);
     commit;
   END LOOP;
 END;

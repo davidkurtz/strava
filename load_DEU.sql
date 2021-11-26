@@ -192,7 +192,7 @@ and not exists(
   and a2.parent_area_number = a1.area_number)
 --fetch first 10 rows only
   ) LOOP
-    strava_pkg.activity_area_search(i.activity_id,i.area_code,i.area_number);
+    strava_pkg.activity_area_hsearch(i.activity_id,i.area_code,i.area_number);
     commit;
   END LOOP;
 END;
