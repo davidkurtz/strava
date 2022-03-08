@@ -11,7 +11,7 @@ and filename is not null
 --and num_pts>0
 /
 
-select *
+select activity_id, activity_type, activity_date, activity_name, num_pts, xmlns, filename
 FROM   activities a
 WHERE  activity_id NOT IN (SELECT activity_id FROM activity_areas)
 and filename is not null
@@ -30,7 +30,7 @@ BEGIN
     WHERE  activity_id NOT IN (SELECT activity_id FROM activity_areas)
     AND    num_pts>0
     ORDER BY num_pts 
-    --FETCH FIRST 50 ROWS ONLY
+    FETCH FIRST 50 ROWS ONLY
   ) LOOP
     dbms_output.put_line(i.activity_id||', '||i.activity_date||', '||i.activity_name||', '||i.distance_km||'km, '||i.num_pts||' points');
     strava_pkg.activity_area_hsearch(i.activity_id);
