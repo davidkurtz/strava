@@ -13,6 +13,10 @@ SET    area_list =
    AND    ma.area_number = aa.area_number
    AND    aa.activity_id = a.activity_id)  
 where  area_list IS NULL
+and exists(
+	select 'x'
+	from activity_areas aa
+	where aa.activity_id = a.activity_id)
 /
 
 commit

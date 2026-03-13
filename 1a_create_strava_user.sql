@@ -18,4 +18,6 @@ CREATE OR REPLACE DIRECTORY exec_dir AS '/usr/bin';
 GRANT READ, EXECUTE ON DIRECTORY exec_dir TO strava;
 GRANT READ, EXECUTE ON DIRECTORY strava TO strava;
 GRANT READ ON DIRECTORY activities TO strava;
+
+GRANT READ, EXECUTE ON sys.dbms_crpyto TO strava;
 spool off

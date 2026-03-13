@@ -28,7 +28,7 @@ CREATE TABLE my_areas
 ,subregion varchar2(30)	
 ,region_wb varchar2(30)
 ,geom mdsys.sdo_geometry
-,geom_27700 mdsys.sdo_geometry
+--,geom_27700 mdsys.sdo_geometry
 ,mbr mdsys.sdo_geometry
 ,num_pts integer
 ,constraint my_areas_pk primary key (area_code, area_number)
@@ -68,3 +68,7 @@ CREATE TABLE STRAVA.ACTIVITY_AREAS
 ,CONSTRAINT ACTIVITY_AREAS_FK2 FOREIGN KEY (AREA_CODE, AREA_NUMBER) REFERENCES STRAVA.MY_AREAS (AREA_CODE, AREA_NUMBER)
 );
 
+drop index MY_AREAS_GEOM_27700;
+alter table my_areas drop column geom_27700;
+
+alter table my_areas move tablespace data rebuild indexes;

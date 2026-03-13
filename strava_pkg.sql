@@ -1,4 +1,7 @@
 REM strava_pkg.sql
+set echo on timi on 
+spool strava_pkg.lst
+clear screen
 rollback;
 REM connect strava/strava@oracle_pdb
 
@@ -16,7 +19,28 @@ commit;
 
 ----------------------------------------------------------------------------------------------------
 rollback;
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+CREATE OR REPLACE TYPE polyline_point AS OBJECT (
+    latitude  NUMBER,
+    longitude NUMBER
+);
+/
+
+CREATE OR REPLACE TYPE polyline_point_table AS TABLE OF polyline_point;
+/
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE strava_pkg as 
+
+FUNCTION decode_polyline
+(p_polyline IN VARCHAR2
+) RETURN polyline_point_table PIPELINED;
+
+FUNCTION polyline_to_sdo 
+(p_polyline IN VARCHAR2
+) RETURN SDO_GEOMETRY;
 
 PROCEDURE activity_area_hsearch
 (p_activity_id INTEGER
@@ -35,9 +59,6 @@ FUNCTION getClobDocument
 ,p_filename  IN VARCHAR2
 ,p_charset   IN VARCHAR2 DEFAULT NULL
 ) RETURN  CLOB DETERMINISTIC;
-
-PROCEDURE load_activity
-(p_activity_id INTEGER);
 
 FUNCTION make_point 
 (longitude in number
@@ -61,7 +82,88 @@ show errors
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE body strava_pkg as 
-k_module      CONSTANT VARCHAR2(48) := $$PLSQL_UNIT;
+k_module  CONSTANT VARCHAR2(64 CHAR) := $$PLSQL_UNIT;
+k_wgs84   CONSTANT INTEGER := 4326;
+----------------------------------------------------------------------------------------------------
+FUNCTION decode_polyline (
+    p_polyline IN VARCHAR2
+) RETURN polyline_point_table PIPELINED
+IS
+    l_index               PLS_INTEGER := 1;
+    l_polyline_len        PLS_INTEGER := LENGTH(p_polyline);
+    l_latitude            NUMBER := 0;
+    l_longitude           NUMBER := 0;
+    l_result              INTEGER;
+    l_shift               INTEGER;
+    l_policyline_onechar  INTEGER;
+
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
+BEGIN
+  dbms_application_info.read_module(module_name=>l_module
+                                   ,action_name=>l_action);
+  dbms_application_info.set_module(module_name=>k_module
+                                  ,action_name=>'decode_polyline');
+    WHILE l_index <= l_polyline_len LOOP
+        -- Decode latitude
+        l_result := 0; 
+		l_shift := 0;
+        LOOP
+            l_policyline_onechar := ASCII(SUBSTR(p_polyline, l_index, 1)) - 63;
+            l_index := l_index + 1;
+            l_result := l_result + BITAND(l_policyline_onechar,31) * POWER(2,l_shift);
+            l_shift := l_shift + 5;
+            EXIT WHEN l_policyline_onechar < 32;
+        END LOOP;
+        IF BITAND(l_result,1)=1 THEN l_result := -(l_result/2); ELSE l_result := l_result/2; END IF;
+        l_latitude := l_latitude + l_result;
+
+        -- Decode longitude
+        l_result := 0; l_shift := 0;
+        LOOP
+            l_policyline_onechar := ASCII(SUBSTR(p_polyline, l_index, 1)) - 63;
+            l_index := l_index + 1;
+            l_result := l_result + BITAND(l_policyline_onechar,31) * POWER(2,l_shift);
+            l_shift := l_shift + 5;
+            EXIT WHEN l_policyline_onechar < 32;
+        END LOOP;
+        IF BITAND(l_result,1)=1 THEN l_result := -(l_result/2); ELSE l_result := l_result/2; END IF;
+        l_longitude := l_longitude + l_result;
+
+        PIPE ROW (polyline_point(l_latitude/100000, l_longitude/100000));
+    END LOOP;
+
+    RETURN;
+END decode_polyline;
+----------------------------------------------------------------------------------------------------
+FUNCTION polyline_to_sdo (
+    p_polyline IN VARCHAR2
+) RETURN SDO_GEOMETRY
+IS
+    l_poly_points polyline_point_table;
+    l_coords SDO_ORDINATE_ARRAY := SDO_ORDINATE_ARRAY();
+    l_geom   SDO_GEOMETRY;
+BEGIN
+    SELECT CAST(COLLECT(VALUE(p)) AS polyline_point_table)
+    INTO l_poly_points
+    FROM TABLE(strava_pkg.decode_polyline(p_polyline)) p;
+
+    FOR i IN 1..l_poly_points.COUNT LOOP
+        l_coords.EXTEND(2);
+        l_coords(l_coords.COUNT-1) := l_poly_points(i).longitude;
+        l_coords(l_coords.COUNT)   := l_poly_points(i).latitude;
+    END LOOP;
+
+    l_geom := SDO_GEOMETRY(
+        2002,  -- 2D line
+        k_wgs84,  -- WGS84
+        NULL,
+        SDO_ELEM_INFO_ARRAY(1,2,1),
+        l_coords
+    );
+
+    RETURN l_geom;
+END polyline_to_sdo;
 ----------------------------------------------------------------------------------------------------
 PROCEDURE activity_area_hsearch
 (p_activity_id INTEGER
@@ -70,14 +172,14 @@ PROCEDURE activity_area_hsearch
 ,p_query_type VARCHAR2 DEFAULT 'P'
 ,p_level INTEGER DEFAULT 0
 ) IS
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
-
   l_t0 timestamp; 
   l_t1 timestamp;
   l_secs NUMBER;
   l_num_rows NUMBER;
-  l_pad varchar2(20);
+  l_pad VARCHAR2(20 CHAR);
+
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
@@ -90,8 +192,7 @@ BEGIN
   
   FOR i IN(
    SELECT m.*
-   ,      CASE WHEN m.geom_27700 IS NOT NULL AND a.geom_27700 IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom_27700,a.geom_27700,5), unit=>'unit=km') 
-               WHEN m.geom       IS NOT NULL AND a.geom IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
+   ,      CASE WHEN m.geom       IS NOT NULL AND a.geom IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
    --,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
    FROM   my_areas m
@@ -140,13 +241,13 @@ END activity_area_hsearch;
 PROCEDURE activity_area_search
 (p_activity_id INTEGER
 ) IS
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
-
   l_t0 timestamp; 
   l_t1 timestamp;
   l_secs NUMBER;
   l_num_rows NUMBER := 0;
+
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
@@ -158,8 +259,7 @@ BEGIN
   
   FOR i IN(
    SELECT m.*
-   ,      CASE WHEN m.geom_27700 IS NOT NULL AND a.geom_27700 IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom_27700,a.geom_27700,5), unit=>'unit=km') 
-               WHEN m.geom       IS NOT NULL AND a.geom IS NOT NULL       THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
+   ,      CASE WHEN m.geom       IS NOT NULL AND a.geom IS NOT NULL       THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
    FROM   my_areas m
    ,      activities a
@@ -196,11 +296,8 @@ FUNCTION getClobDocument
 ,p_filename  IN VARCHAR2
 ,p_charset   IN VARCHAR2 DEFAULT NULL
 ) RETURN CLOB DETERMINISTIC is
-  l_module        VARCHAR2(64);
-  l_action        VARCHAR2(64);
-
-  v_filename      VARCHAR2(128);
-  v_directory     VARCHAR2(128);
+  v_filename      VARCHAR2(128 CHAR);
+  v_directory     VARCHAR2(128 CHAR);
   v_file          bfile;
   v_unzipped      blob := empty_blob();
 
@@ -213,6 +310,9 @@ FUNCTION getClobDocument
 
   e_22288 EXCEPTION; --file or LOB operation FILEOPEN failed
   PRAGMA EXCEPTION_INIT(e_22288, -22288);
+
+  l_module        VARCHAR2(64 CHAR);
+  l_action        VARCHAR2(64 CHAR);
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
@@ -285,136 +385,12 @@ exception when others then
   raise;
 end getClobDocument;
 ----------------------------------------------------------------------------------------------------
-PROCEDURE load_activity
-(p_activity_id INTEGER
-) IS
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
-
-  l_num_rows INTEGER;
-  l_num_pts INTEGER;
-  l_gpx CLOB;
-  
-  l_xmlns0 VARCHAR2(64);
-  l_xmlns1 VARCHAR2(64);
-
-  e_13034 EXCEPTION; --Invalid data in the SDO_ORDINATE_ARRAY in SDO_GEOMETRY object
-  e_29877 EXCEPTION; --failed in the execution of the ODCIINDEXUPDATE routine
-  PRAGMA EXCEPTION_INIT(e_13034, -13034);
-  PRAGMA EXCEPTION_INIT(e_29877, -29877);
-BEGIN
-  dbms_application_info.read_module(module_name=>l_module
-                                   ,action_name=>l_action);
-  dbms_application_info.set_module(module_name=>k_module
-                                  ,action_name=>'load_activity');
-  dbms_output.put_line('Loading Activity: '||p_activity_id);
-  
-  BEGIN
-    SELECT strava_pkg.getClobDocument('ACTIVITIES',filename)
-    INTO   l_gpx
-    FROM   activities 
-    WHERE  activity_id = p_activity_id
-    AND    filename IS NOT NULL;
-    l_num_rows := SQL%rowcount;
-  EXCEPTION
-    WHEN no_data_found THEN
-	  l_num_rows := 0;
-	  dbms_output.put_line('Cannot find activity '||p_activity_id);
-  END;
-  
-IF l_num_rows > 0 THEN
-  UPDATE activities
-  SET    gpx = XMLTYPE(l_gpx), geom = null, geom_27700 = null, num_pts = null, xmlns = NULL
-  WHERE  activity_id = p_activity_id
-  RETURNING extractvalue(gpx,'/gpx/@creator', 'xmlns="http://www.topografix.com/GPX/1/0"') 
-  ,         extractvalue(gpx,'/gpx/@creator', 'xmlns="http://www.topografix.com/GPX/1/1"') 
-  INTO      l_xmlns0, l_xmlns1;
-  l_num_rows := SQL%rowcount;
-END IF;
-  
-IF l_num_rows > 0 AND l_xmlns1 IS NOT NULL THEN
---dbms_output.put_line('xmlns 1.1='||l_xmlns1);
-  BEGIN
-    UPDATE activities a
-    SET geom = mdsys.sdo_geometry(2002,4326,null,mdsys.sdo_elem_info_array(1,2,1),
-    cast(multiset(
-      select CASE n.rn WHEN 1 THEN pt.lng WHEN 2 THEN pt.lat END ord
-      from (
-        SELECT rownum rn
-        ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lon')) as lng
-        ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lat')) as lat
-        FROM   TABLE(XMLSEQUENCE(extract(a.gpx,'/gpx/trk/trkseg/trkpt', 'xmlns="http://www.topografix.com/GPX/1/1"'))) t
-        ) pt,
-        (select 1 rn from dual union all select 2 from dual) n
-	    order by pt.rn, n.rn
-      ) AS mdsys.sdo_ordinate_array))
-    , xmlns = 'xmlns="http://www.topografix.com/GPX/1/1"'
-    WHERE  a.gpx IS NOT NULL
-    And    activity_id = p_activity_id;
-    l_num_rows := SQL%rowcount;
-  EXCEPTION
-    WHEN e_13034 OR e_29877 THEN 
-	  dbms_output.put_line('Exception:'||sqlerrm);
-	  l_num_rows := 0;
-  END;
-ELSIF l_num_rows > 0 AND l_xmlns0 IS NOT NULL THEN
---dbms_output.put_line('xmlns 1.0='||l_xmlns0);
-  UPDATE activities a
-  SET    geom = mdsys.sdo_geometry(2002,4326,null,mdsys.sdo_elem_info_array(1,2,1),
-  cast(multiset(
-    select CASE n.rn WHEN 1 THEN pt.lng WHEN 2 THEN pt.lat END ord
-    from (
-      SELECT rownum rn
-      ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lon')) as lng
-      ,      TO_NUMBER(EXTRACTVALUE(VALUE(t), 'trkpt/@lat')) as lat
-      FROM   TABLE(XMLSEQUENCE(extract(a.gpx,'/gpx/trk/trkseg/trkpt', 'xmlns="http://www.topografix.com/GPX/1/0"'))) t
-      ) pt,
-      (select 1 rn from dual union all select 2 from dual) n
-	  order by pt.rn, n.rn
-    ) AS mdsys.sdo_ordinate_array))
-  , xmlns = 'xmlns="http://www.topografix.com/GPX/1/0"'
-  WHERE  a.gpx IS NOT NULL
-  and    (a.num_pts = 0 OR a.geom IS NULL)
-  And    activity_id = p_activity_id;
-  l_num_rows := SQL%rowcount;
-END IF;
-
-IF l_num_rows > 0 THEN
-  BEGIN
-    UPDATE activities 
-    SET    geom = sdo_util.simplify(geom,1)
-    WHERE  geom IS NOT NULL
-    And    activity_id = p_activity_id;
-    l_num_rows := SQL%rowcount;
-  EXCEPTION
-    WHEN e_13034 THEN 
-	  dbms_output.put_line('Exception:'||sqlerrm);
-  END;
-END IF;
-
-IF l_num_rows > 0 THEN
-  UPDATE activities 
-  SET    num_pts = SDO_UTIL.GETNUMVERTICES(geom)
-  ,      geom_27700 = sdo_cs.transform(geom,27700)
-  ,      mbr = sdo_geom.sdo_mbr(geom)
-  WHERE  geom IS NOT NULL
-  And    activity_id = p_activity_id
-  RETURNING num_pts INTO l_num_pts;
-  dbms_output.put_line('Activity ID:'||p_activity_id||', '||l_num_pts||' points');
-  l_num_rows := SQL%rowcount;
-END IF;
-
-  dbms_application_info.set_module(module_name=>l_module
-                                  ,action_name=>l_action);
-
-END load_activity;
-----------------------------------------------------------------------------------------------------
 FUNCTION make_point 
 (longitude in number
 ,latitude  in number
 ) RETURN sdo_geometry DETERMINISTIC is
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
 begin
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
@@ -424,7 +400,7 @@ begin
   if longitude is not null and latitude is not null then
     return
       sdo_geometry (
-        2001, 4326,
+        2001, k_wgs84,
         sdo_point_type (longitude, latitude, null),
         null, null
       );
@@ -441,8 +417,8 @@ FUNCTION name_hierarchy_fn
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
 ,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
 ) RETURN CLOB DETERMINISTIC is
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
 
   l_name_hierarchy CLOB;
   l_last_name my_areas.name%TYPE := '';
@@ -483,11 +459,11 @@ PROCEDURE name_hierarchy_txtidx
 (p_rowid in rowid
 ,p_dataout IN OUT NOCOPY CLOB
 ) IS
-  l_module VARCHAR2(64);
-  l_action VARCHAR2(64);
-
   l_last_name my_areas.name%TYPE := '';
   l_count INTEGER := 0;
+
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);
 BEGIN
   dbms_application_info.read_module(module_name=>l_module
                                    ,action_name=>l_action);
@@ -525,4 +501,4 @@ END strava_pkg;
 show errors
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-
+spool off
