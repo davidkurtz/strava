@@ -9,6 +9,8 @@ grant connect, resource to strava;
 grant create view to strava;
 grant select_catalog_role to strava;
 grant create job to strava;
+GRANT EXECUTE ON dbms_scheduler TO strava;
+GRANT MANAGE SCHEDULER TO strava;
 --grant XDBADMIN to STRAVA;
 --grant alter session to STRAVA;
 alter user strava quota unlimited on users;
@@ -25,7 +27,6 @@ DROP DIRECTORY exec_dir;
 --GRANT READ, EXECUTE ON DIRECTORY exec_dir TO strava;
 --GRANT READ, EXECUTE ON DIRECTORY strava TO strava;
 --GRANT READ ON DIRECTORY activities TO strava;
-
 GRANT EXECUTE ON sys.dbms_crypto TO strava;
 
 spool off

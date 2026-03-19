@@ -1,24 +1,27 @@
 REM activities_area_list.sql
 
+GRANT EXECUTE ON CTX_DDL TO strava;
+
+/*
 alter table activities 
 add (area_list clob)
 LOB(area_list) STORE AS SECUREFILE activities_area_list (DEDUPLICATE COMPRESS)
-/
+*/
 
-update activities a
-SET    area_list = 
-  (SELECT LISTAGG(DISTINCT ma.name,', ') WITHIN GROUP (ORDER BY ma.name) 
-   FROM   my_areas ma, activity_areas aa
-   WHERE  ma.area_code = aa.area_code
-   AND    ma.area_number = aa.area_number
-   AND    aa.activity_id = a.activity_id)  
-where  area_list IS NULL
-and exists(
-	select 'x'
-	from activity_areas aa
-	where aa.activity_id = a.activity_id)
-/
 
+merge into activities u 
+using (
+SELECT a.activity_id, LISTAGG(DISTINCT ma.name,', ') WITHIN GROUP (ORDER BY ma.name) area_list
+FROM   activities a, my_areas ma, activity_areas aa
+WHERE  ma.area_code = aa.area_code
+AND    ma.area_number = aa.area_number
+AND    aa.activity_id = a.activity_id
+and    a.area_list IS NULL
+group by a.activity_id
+) s on (s.activity_id = u.activity_id)
+WHEN MATCHED THEN UPDATE
+SET u.area_list = s.area_list
+/
 commit
 /
 

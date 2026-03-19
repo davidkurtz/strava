@@ -40,7 +40,7 @@ BEGIN
   UPDATE ACTIVITIES
   SET    processing_status = 4
   WHERE  activity_id = :old.ACTIVITY_ID
-  AND    processing_status > 4;
+  AND    processing_status BETWEEN 5 and 8;
 EXCEPTION
   WHEN e_mutation THEN 
     dbms_output.put_line('Ignoring '||sqlerrm);

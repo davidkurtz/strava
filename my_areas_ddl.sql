@@ -23,10 +23,10 @@ CREATE TABLE my_areas
 ,iso_number integer
 ,num_children integer
 ,matchable integer default 1
-,continent varchar2(30)	
-,region_un varchar2(30)	
-,subregion varchar2(30)	
-,region_wb varchar2(30)
+--,continent varchar2(30)	
+--,region_un varchar2(30)	
+--,subregion varchar2(30)	
+--,region_wb varchar2(30)
 ,geom mdsys.sdo_geometry
 --,geom_27700 mdsys.sdo_geometry
 ,mbr mdsys.sdo_geometry
@@ -56,7 +56,8 @@ alter table my_areas add name_heirarchy VARCHAR(4000) /*as (strava_pkg.name_heir
 Create index my_areas_rfk_uqid on my_areas(parent_uqid);
 Create index my_areas_rfk_area_code on my_areas (parent_area_code, parent_area_number);
 
-create synonym my_Areas2 for my_areas;
+--create synonym my_Areas2 for my_areas;
+
 
 CREATE TABLE STRAVA.ACTIVITY_AREAS
 (ACTIVITY_ID NUMBER NOT NULL

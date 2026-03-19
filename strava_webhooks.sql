@@ -3,7 +3,7 @@ REM strava_webhooks.sql
 -- webhook inbound events queue
 ----------------------------------------------------------------------------------------------------
 set echo on
---DROP TABLE strava.webhook_events PURGE;
+--DROP TABLE strava.webhook_events  PURGE;
 CREATE TABLE strava.webhook_events
 (ID                NUMBER                   GENERATED ALWAYS AS IDENTITY
 ,PAYLOAD           CLOB
@@ -70,11 +70,13 @@ AFTER INSERT OR UPDATE ON strava.webhook_events
 FOR EACH ROW
 DECLARE
   PRAGMA autonomous_transaction;
+  k_job_name CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB';
 BEGIN
   IF :new.processing_status = 0 THEN
-    --dbms_scheduler.set_attribute(name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', 
-	--                             attribute => 'START_DATE', value => SYSTIMESTAMP AT TIME 'UTC');
-	dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
+    dbms_scheduler.set_attribute(name => k_job_name, 
+	                             attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '1' SECOND);
+    dbms_scheduler.enable(name => k_job_name);
+	--dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
   END IF;
 END;
 /
@@ -363,7 +365,7 @@ order by 2, last_updated
 ----------------------------------------------------------------------------------------------------
 --reprocess messages that have errored
 ----------------------------------------------------------------------------------------------------
-update webhook_events set processing_status = 0 where processing_status < 0;
+update webhook_events set processing_status = 0 where processing_status <= 0;
 commit;
 
 ----------------------------------------------------------------------------------------------------

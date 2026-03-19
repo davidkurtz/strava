@@ -44,14 +44,17 @@ END;
 --https://data-sdublincoco.opendata.arcgis.com/api/download/v1/items/ff110185dc924e5698b46f595fe6488b/geojson?layers=0
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
-    --host => 'data.gov.ie',
+	--host => 'data.gov.ie',
 	--host => 'data-sdublincoco.opendata.arcgis.com',
     --host => 'hub.arcgis.com',
 	--host => 'tg-arcgisazurecdataprodeu1.az.arcgis.com',
     --host => 'data-osi.opendata.arcgis.com',
     --host => 'osm-boundaries.com',
-    host => 'simplemaps.com',
+    --host => 'simplemaps.com',
     --host => '*.arcgis.com',
+    --host => '*.opendatani.gov.uk',
+    host => '*.data.gov.uk',
+	--host => '*.cloudflarestorage.com',
     ace  => xs$ace_type(
               privilege_list => xs$name_list('connect','http'),
               principal_name => 'STRAVA',

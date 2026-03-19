@@ -58,15 +58,26 @@ desc gear_dv
 --truncate table gear;
 clear screen 
 set echo on serveroutput on 
---add valid gear IDs here--
+exec strava_http.get_gear('b4922223');
 exec strava_http.get_gear('b993101');
+exec strava_http.get_gear('b9149202');
+exec strava_http.get_gear('b861402');
+exec strava_http.get_gear('b2237986');
+exec strava_http.get_gear('b4726660');
+exec strava_http.get_gear('b4741153');
+exec strava_http.get_gear('b4872537');
+exec strava_http.get_gear('b4872607');
+exec strava_http.get_gear('b4907360');
+
 --now repeat a few commands
 exec strava_http.get_gear('b993101');
 exec strava_http.get_gear('b993101');
+exec strava_http.get_gear('b9149202');
 
 set echo on
 --footware
 exec strava_http.get_gear('g13860069');
+exec strava_http.get_gear('g15649396');
 
 select * from gear order by gear_id;
 select * from gear_dv;

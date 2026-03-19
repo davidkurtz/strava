@@ -20,6 +20,7 @@ CREATE TABLE stage_my_areas (
 	PARENT_AREA_CODE VARCHAR2(4 CHAR), 
 	PARENT_AREA_NUMBER NUMBER(*,0), 
 	PARENT_UQID VARCHAR2(20 CHAR), 
+	PROVINCE VARCHAR2(60 CHAR), --add
 	COUNTY VARCHAR2(60 CHAR), 
 	NAME VARCHAR2(60 CHAR), 
 	MATCHABLE NUMBER(*,0) DEFAULT 1, 
@@ -31,7 +32,7 @@ CREATE TABLE stage_my_areas (
 );
 
 ALTER TABLE stage_my_areas ADD AREA NUMBER;
-ALTER TABLE stage_my_areas MATCHABLE NUMBER(*,0) DEFAULT 1, 
+ALTER TABLE stage_my_areas MATCHABLE NUMBER(*,0) DEFAULT 1;
 UPDATE stage_my_areas set MATCHABLE = 1;
 ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_pk PRIMARY KEY (area_code, area_number);
 ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_pk2 UNIQUE (uqid);
@@ -80,7 +81,7 @@ INDEXTYPE IS MDSYS.SPATIAL_INDEX_V2
 ----------------------------------------------------------------------------------------------------
 clear screen
 set serveroutput on timi on
-TRUNCATE TABLE stage_geo_data;
+--TRUNCATE TABLE stage_geo_data;
 DECLARE --Counties - National Statutory Boundaries - Ungeneralised - 2024
   l_url VARCHAR2(1000)
   := 'https://data-osi.opendata.arcgis.com/api/download/v1/items/e6f6418eb62442c4adbe18d0a64135a2/geojson?layers=0';
@@ -99,6 +100,9 @@ BEGIN
   DBMS_LOB.freetemporary(l_clob);
 END;
 /
+--staging data loaded from web
+select * from stage_geo_data;
+delete from stage_geo_data where length(geo_json) < 1000;
 
 ----------------------------------------------------------------------------------------------------
 --list what we have loaded in main table
@@ -113,8 +117,6 @@ where parent_area_number = '1159320877'
 and parent_area_code = 'SOVC';
 
 
---staging data loaded from web
-select * from stage_geo_data;
 ----------------------------------------------------------------------------------------------------
 --parse geo_json from staging tables
 --SELECT UTL_HTTP.get_detailed_sqlerrm FROM dual;
@@ -135,6 +137,8 @@ DECLARE
   j_geometry    JSON_OBJECT_T;
 
   l_geom        MDSYS.SDO_GEOMETRY;
+  l_geom_centre MDSYS.SDO_GEOMETRY;
+  l_centre      MDSYS.SDO_GEOMETRY;
 
   l_id       INTEGER;
   l_srid     VARCHAR2(10 char);
@@ -142,6 +146,9 @@ DECLARE
   l_county   VARCHAR2(200 char);
   l_name     VARCHAR2(100 char);
   l_num_pts  INTEGER;
+  l_centrex  NUMBER;
+  l_centrey  NUMBER;
+  l_offset   NUMBER;
   
   e_json_syntax_error  EXCEPTION;
   PRAGMA exception_init(e_json_syntax_error,-40441);
@@ -153,7 +160,7 @@ BEGIN
 
   j_crs := j_root.get_object('crs');
   l_clob := j_crs.to_clob;
-  --strava_http.print_clob(l_clob);
+  strava_http.print_clob(l_clob);
 	  
   j_features := j_root.get_array('features');
   l_srid     := REGEXP_SUBSTR(j_crs.get_object('properties').get_string('name'),'[^:]+',1,2);
@@ -165,16 +172,27 @@ BEGIN
 	ELSE
       l_clob := j_properties.to_clob;
 	  strava_http.print_clob(l_clob);
-	  l_id               := j_properties.get_string('CC_ID');
+	  l_id               := j_properties.get_string('CO_ID');
 	  l_province         := j_properties.get_string('PROVINCE');
       l_county           := initcap(j_properties.get_string('COUNTY'));
       l_name             := initcap(j_properties.get_string('ENGLISH'));
-      dbms_output.put_line(l_id||', '||l_srid||', '||l_name||', Co. '||l_county||', Province:'||l_province);
+	  l_centrex          := j_properties.get_string('CENTROID_X');
+	  l_centrey          := j_properties.get_string('CENTROID_Y');
+	  l_centre           := SDO_CS.TRANSFORM(SDO_GEOMETRY(2001, l_srid, SDO_POINT_TYPE(l_centrex, l_centrey, NULL),NULL,NULL),4326);
+	  
+      dbms_output.put_line(l_id||', '||l_srid||', '||l_name||', Co. '||l_county||', Province:'||l_province
+	  ||', Centre:'||l_centre.sdo_point.x
+   	          ||','||l_centre.sdo_point.y
+	  );
 	END IF;
 
     j_geometry := j_feature.get_object('geometry');
 	IF j_geometry IS NULL THEN
 	  dbms_output.put_line(l_county||': j_geometry is null');
+	  l_offset := NULL;
+	  l_geom := NULl;
+	  l_num_pts := NULL;
+	  l_geom_centre := NULL;
 	ELSE
 	  -- Get coordinates array
       l_clob := j_geometry.to_clob;
@@ -195,25 +213,32 @@ BEGIN
 
 	  l_geom.SDO_SRID := TO_NUMBER(l_srid);
 	  l_geom := SDO_CS.TRANSFORM(l_geom, 4326);
-	  l_geom := SDO_CS.MAKE_2D(l_geom);
-	
+      l_geom := sdo_util.rectify_Geometry(SDO_CS.MAKE_2D(l_geom),0.001);	
 	  l_num_pts := SDO_UTIL.GETNUMVERTICES(l_geom);
+	  l_geom_centre := SDO_GEOM.SDO_CENTROID(l_geom, 0.005);
+	  --l_offset := sdo_geom.sdo_distance(l_centre,l_geom_centre,0.0005);
 	END IF;
     
-    dbms_output.put_line('Job ID:'||l_id
+    dbms_output.put_line('ID:'||l_id
 	      ||', Province:'||l_province
 		  ||', County:'||l_county
 		  ||', Council:'||l_name
+	      ||', Centre:'||l_geom_centre.sdo_point.x
+   	              ||','||l_geom_centre.sdo_point.y
+		  --||', Centre Offset:'||l_offset
 		  ||', '||l_num_pts||' points');
 	--dbms_output.put_line(SDO_UTIL.TO_WKTGEOMETRY(l_geom));
 	
 	INSERT INTO stage_my_areas
-	(area_code, area_number, area_level, uqid, county, name, geom)
-	VALUES
-	('CTY', l_id, 5, 'IRL'||l_id, l_county, l_name, l_geom)
+	(area_code, area_number, area_level, uqid, province, county, name, geom, mbr, num_pts
+	--, area
+	) VALUES
+	('CTY', l_id, 5, 'IRL'||l_id, l_province, l_county, l_name, l_geom, sdo_geom.sdo_mbr(l_geom), l_num_pts
+	--, SDO_GEOM.SDO_AREA(l_geom, 0.001,'unit=km')
+	)
 	;
-	commit;
   END LOOP;
+  Commit;
 END;
 /
 
@@ -221,10 +246,7 @@ END;
 --update geometries on loaded counties - though also includes city councils
 ----------------------------------------------------------------------------------------------------
 UPDATE stage_my_areas
-SET num_pts = SDO_UTIL.GETNUMVERTICES(geom)
-,   area = SDO_GEOM.SDO_AREA(geom, 0.00001)/1e6
-, mbr = sdo_geom.sdo_mbr(geom)
-, parent_area_code = 'SOVC'
+SET parent_area_code = 'SOVC'
 , parent_area_number = 1159320877
 , parent_uqid = 'NE1159320877'
 /
@@ -243,11 +265,11 @@ and area_code like 'CITC'
 /
 
 select x.* 
-, count(*) over (partition by county) num_councils
-, min(uqid) over (partition by county) min_uqid
-, min(area_code) over (partition by county) min_area_code
+, count(*) over (partition by province) num_councils
+, min(uqid) over (partition by province) min_uqid
+, min(area_code) over (partition by province) min_area_code
 from stage_my_areas x
-ORDER BY 1,2
+ORDER BY province, county
 /
 
 ----------------------------------------------------------------------------------------------------
@@ -320,7 +342,7 @@ BEGIN
 	SET    geom = l_union
     ,      num_pts = SDO_UTIL.GETNUMVERTICES(l_union)
     ,      mbr = sdo_geom.sdo_mbr(l_union)
-    ,      area = SDO_GEOM.SDO_AREA(l_union, l_tol)/1e6
+    ,      area = SDO_GEOM.SDO_AREA(l_union, l_tol,'unit=sq_km')
     WHERE  area_code = i.AREA_CODE
 	AND    area_number = i.parent_area_number;
   END LOOP;
@@ -333,12 +355,13 @@ from stage_my_areas x
 ORDER BY county, uqid
 /
 
-rollback;
+--rollback;
 select count(*) from activity_areas;
 
 ----------------------------------------------------------------------------------------------------
 --delete old counties
 ----------------------------------------------------------------------------------------------------
+delete from my_areas where area_code = 'CITC' and uqid like 'IRL%';
 delete from my_areas where parent_area_code = 'SOVC' and parent_area_number = 1159320877;
 
 ----------------------------------------------------------------------------------------------------
@@ -365,7 +388,7 @@ select count(*) from activity_areas;
 insert into my_areas
 (      area_code, area_number, uqid, area_level, parent_area_code, parent_area_number, parent_uqid, matchable, geom, mbr, num_pts, name)
 select area_code, area_number, uqid, area_level, parent_area_code, parent_area_number, parent_uqid, matchable, geom, mbr, num_pts
-,      CASE WHEN area_code = 'CTY' THEN 
+,      CASE WHEN area_code = 'CTY' THEN name
             ELSE county END
 from stage_my_areas
 /
@@ -392,7 +415,9 @@ SET u.num_children = s.new_num_children
 ----------------------------------------------------------------------------------------------------
 MERGE INTO activities u
 USING (
-select a.activity_id, a.name, a.start_date_utc, a.processing_status, a.last_updated, ma.last_updated
+select a.activity_id, a.name, a.start_date_utc, a.processing_status
+, a.last_updated activity_last_updated
+, ma.last_updated area_last_updated
 from activities a
 ,    activity_areas aa
 ,    my_areas ma
@@ -432,7 +457,9 @@ SET u.name = s.county
 ----------------------------------------------------------------------------------------------------
 MERGE INTO activities u
 USING (
-select a.activity_id, a.name, a.start_date_utc, a.processing_status, a.last_updated, ma.last_updated
+select a.activity_id, a.name, a.start_date_utc, a.processing_status
+, a.last_updated act_last_updated
+, ma.last_updated areas_last_updated
 from activities a
 ,    activity_areas aa
 ,    my_areas ma

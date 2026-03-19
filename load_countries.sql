@@ -44,13 +44,13 @@ and u.area_number = s.ne_id)
 when not matched then insert 
 (u.area_Code ,u.area_number ,u.uqid ,u.wikidataid ,u.area_level ,u.name 
 ,u.iso_code3 ,u.iso_code2 ,u.iso_number 
-,u.continent ,u.region_un ,u.subregion ,u.region_wb 
+/*,u.continent ,u.region_un ,u.subregion ,u.region_wb */
 ,u.geom ,u.mbr)
 values 
 (s.area_Code ,s.ne_id
 ,'NE'||s.ne_id ,s.wikidataid ,s.level_ ,s.admin
 ,NULLIF(s.sov_a3,'-99') ,NULLIF(s.iso_a2,'-99') ,NULLIF(s.iso_n3,'-99')
-,s.continent ,s.region_un ,s.subregion ,s.region_wb 
+/*,s.continent ,s.region_un ,s.subregion ,s.region_wb */
 ,s.geom ,sdo_geom.sdo_mbr(s.geom))
 /
 commit;

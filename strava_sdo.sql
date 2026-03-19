@@ -190,6 +190,8 @@ BEGIN
   RETURN;
 END decode_polyline;
 ----------------------------------------------------------------------------------------------------
+-- convert strava polyline map to a spatial geometry
+----------------------------------------------------------------------------------------------------
 FUNCTION polyline_to_geom (
     p_polyline IN VARCHAR2
 ) RETURN SDO_GEOMETRY
@@ -371,7 +373,7 @@ BEGIN
   RETURNING new area_list
   INTO l_new_area_list;
   
-  IF SQL%ROWCOUNT = 0 THEN 
+  IF SQL%ROWCOUNT = 0 OR l_new_area_list IS NULL THEN 
     RAISE e_activity_not_found;
   ELSE
     NULL;
@@ -471,13 +473,13 @@ BEGIN
    SELECT m.*
    ,      CASE WHEN m.geom IS NOT NULL AND a.geom IS NOT NULL THEN sdo_geom.sdo_length(SDO_GEOM.sdo_intersection(m.geom,a.geom,5), unit=>'unit=km') 
 		  END geom_length
-   --,      (SELECT MIN(m2.area_level) FROM my_areas m2 WHERE m2.parent_area_code = m.area_code AND m2.parent_area_number = m.area_number) min_child_level
    FROM   my_areas m
+     INNER JOIN my_area_codes mac ON mac.area_code = m.area_code
    ,      activities a
-   WHERE  (  (p_query_type = 'P' AND parent_area_code = p_area_code AND parent_area_number = p_area_number) 
-          OR (p_query_type = 'A' AND area_code        = p_area_code AND area_number        = p_area_number)
-		  OR (p_query_type = 'A' AND p_area_number IS NULL          AND area_code          = p_area_code)
-          OR (p_area_code IS NULL AND p_area_number IS NULL AND parent_area_code IS NULL AND parent_area_number IS NULL)
+   WHERE  (  (p_query_type = 'P'  AND m.parent_area_code = p_area_code AND m.parent_area_number = p_area_number) 
+          OR (p_query_type = 'A'  AND m.area_code        = p_area_code AND m.area_number        = p_area_number)
+		  OR (p_query_type = 'A'  AND p_area_number IS NULL            AND m.area_code          = p_area_code)
+          OR (p_area_code IS NULL AND p_area_number IS NULL AND m.parent_area_code IS NULL AND m.parent_area_number IS NULL)
 		  )
    AND    a.activity_id = p_activity_id
    and    SDO_ANYINTERACT(m.geom, a.geom) = 'TRUE'
@@ -513,6 +515,8 @@ BEGIN
 
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 END activity_area_hsearch;
+----------------------------------------------------------------------------------------------------
+--perform hierarchical area search for a particular activity, and write results to ACTIVITY_AREAS
 ----------------------------------------------------------------------------------------------------
 PROCEDURE activity_area_search
 (p_activity_id activities.activity_id%TYPE
@@ -650,6 +654,8 @@ exception when others then
   raise;
 end getClobDocument;
 ----------------------------------------------------------------------------------------------------
+-- function to return longitude/latitude coordinate as a spatial point
+----------------------------------------------------------------------------------------------------
 FUNCTION make_point 
 (longitude in number
 ,latitude  in number
@@ -674,10 +680,12 @@ begin
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 end make_point;
 ----------------------------------------------------------------------------------------------------
+-- function to return area hierarchy 
+----------------------------------------------------------------------------------------------------
 FUNCTION name_hierarchy_fn
 (p_area_code   my_areas.area_code%TYPE DEFAULT NULL
 ,p_area_number my_areas.area_number%TYPE DEFAULT NULL
-,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*/
+,p_type VARCHAR2 DEFAULT 'C' /*(C)umulative, (R)oot*, (A)ll/*/
 ) RETURN CLOB DETERMINISTIC is
   l_module VARCHAR2(64 CHAR);
   l_action VARCHAR2(64 CHAR);
@@ -698,15 +706,15 @@ BEGIN
     CONNECT BY NOCYCLE prior m.parent_area_code   = m.area_code
                    AND prior m.parent_area_number = m.area_number
   ) LOOP
-    IF i.matchable >= 1 THEN
+    IF i.matchable >= 1 OR p_type = 'A' THEN
       l_count := l_count + 1;
 	  --dbms_output.put_line(l_count||':'||i.name||'='||l_last_name);
-	  IF l_count > 1 AND p_type = 'C' THEN
-	    IF i.name != l_last_name THEN --supress repeated names
+	  IF p_type = 'R' OR (l_count = 1 AND p_type = 'A') THEN
+        l_name_hierarchy := i.name;
+	  ELSIF (l_count > 1) AND p_type IN('A','C') THEN
+	    IF i.name != l_last_name AND NOT l_last_name like i.name||' %'  THEN --supress repeated names
           l_name_hierarchy := l_name_hierarchy ||', '|| i.name;
         END IF;
-	  ELSE
-        l_name_hierarchy := i.name;
 	  END IF;
       l_last_name := i.name;
 	END IF;
@@ -715,6 +723,8 @@ BEGIN
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
   RETURN l_name_hierarchy;
 END name_hierarchy_fn;
+----------------------------------------------------------------------------------------------------
+-- procedure to return area hierarchy as outbound parameter
 ----------------------------------------------------------------------------------------------------
 PROCEDURE name_hierarchy_txtidx
 (p_rowid in rowid
@@ -753,6 +763,8 @@ BEGIN
   --dbms_output.put_line(p_dataout);
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 END name_hierarchy_txtidx;
+----------------------------------------------------------------------------------------------------
+-- convert a spatial geometry to a GPX file - no timestamps or altitude
 ----------------------------------------------------------------------------------------------------
 FUNCTION geom_to_gpx 
 (p_geom IN MDSYS.SDO_GEOMETRY
@@ -793,6 +805,8 @@ BEGIN
   RETURN XMLTYPE(l_gpx);
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 END geom_to_gpx;
+----------------------------------------------------------------------------------------------------
+-- alternative to sdo_util.from_geojson - slower but more robust - use when Oracle function errors
 ----------------------------------------------------------------------------------------------------
 FUNCTION build_sdo_geometry_from_geojson
 (p_geom_json IN JSON_OBJECT_T

@@ -20,10 +20,10 @@ set echo on
 	ISO_NUMBER NUMBER(*,0), 
 	NUM_CHILDREN NUMBER(*,0), 
 	MATCHABLE NUMBER(*,0) DEFAULT 1, 
-	CONTINENT VARCHAR2(30 CHAR), 
-	REGION_UN VARCHAR2(30 CHAR), 
-	SUBREGION VARCHAR2(30 CHAR), 
-	REGION_WB VARCHAR2(30 CHAR), 
+  --CONTINENT VARCHAR2(30 CHAR), 
+  --REGION_UN VARCHAR2(30 CHAR), 
+  --SUBREGION VARCHAR2(30 CHAR), 
+  --REGION_WB VARCHAR2(30 CHAR), 
 	GEOM MDSYS.SDO_GEOMETRY , 
 	--GEOM_27700 MDSYS.SDO_GEOMETRY , 
 	MBR MDSYS.SDO_GEOMETRY , 
@@ -64,15 +64,16 @@ alter table my_areas modify parent_uqid varchar2(20 char);
 alter table my_areas modify name varchar2(60 char);
 alter table my_areas modify iso_code2 varchar2(5 char);
 alter table my_areas modify iso_code3 varchar2(3 char);
-alter table my_areas modify continent varchar2(30 char);
-alter table my_areas modify region_un varchar2(30 char);
-alter table my_areas modify subregion varchar2(30 char);
-alter table my_areas modify region_wb varchar2(30 char);
+--alter table my_areas modify continent varchar2(30 char);
+--alter table my_areas modify region_un varchar2(30 char);
+--alter table my_areas modify subregion varchar2(30 char);
+--alter table my_areas modify region_wb varchar2(30 char);
 alter table my_areas modify suffix varchar2(20 char);
 
 CREATE INDEX STRAVA.MY_AREAS_RFK_UQID ON STRAVA.MY_AREAS (PARENT_UQID) ;
 CREATE INDEX STRAVA.MY_AREAS_RFK_AREA_CODE ON STRAVA.MY_AREAS (PARENT_AREA_CODE, PARENT_AREA_NUMBER);
 
+DROP INDEX STRAVA.MY_AREAS_NAME_TXTIDX;
 CREATE INDEX STRAVA.MY_AREAS_NAME_TXTIDX ON STRAVA.MY_AREAS (NAME) 
    INDEXTYPE IS CTXSYS.CONTEXT  PARAMETERS ('datastore my_areas_datastore lexer my_areas_lexer sync(on commit)');
 
@@ -86,9 +87,12 @@ SET GEOM_27700 = null
 where GEOM_27700 is not null
 /
 
-ALTER TABLE strava.MY_AREAS
-DROP geom_27700
-/
+ALTER TABLE strava.MY_AREAS DROP COLUMN geom_27700;
+ALTER TABLE strava.MY_AREAS DROP COLUMN CONTINENT;
+ALTER TABLE strava.MY_AREAS DROP COLUMN REGION_UN;
+ALTER TABLE strava.MY_AREAS DROP COLUMN SUBREGION;
+ALTER TABLE strava.MY_AREAS DROP COLUMN REGION_WB; 
+
 
 ALTER TABLE STRAVA.MY_AREAS 
 ADD last_updated TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP;
@@ -102,18 +106,35 @@ END;
 /
 
 
-CREATE OR REPLACE TRIGGER strava.my_areas_update_name
-AFTER UPDATE OF name, geom, matchable ON my_areas
+CREATE OR REPLACE TRIGGER strava.my_areas_update_geom
+AFTER UPDATE OF geom, mbr, matchable, num_children, parent_area_code, parent_area_number, parent_uqid 
+ON my_areas
 FOR EACH ROW
 BEGIN
   UPDATE ACTIVITIES
   SET    processing_status = 4
-  WHERE  processing_status > 4
+  WHERE  processing_status BETWEEN 5 AND 8
   AND    activity_id IN (
     SELECT activity_id
     FROM   activity_areas
     WHERE  area_code = :new.area_code
-    AND    area_number = :new.area_number  
+	AND area_number = :new.area_number
+  );
+END;
+/
+CREATE OR REPLACE TRIGGER strava.my_areas_update_name
+AFTER UPDATE OF name
+ON my_areas
+FOR EACH ROW
+BEGIN
+  UPDATE ACTIVITIES
+  SET    processing_status = 4
+  WHERE  processing_status BETWEEN 5 AND 8
+  AND    activity_id IN (
+    SELECT activity_id
+    FROM   activity_areas
+    WHERE  area_code = :new.area_code 
+	AND area_number = :new.area_number
   );
 END;
 /
@@ -125,6 +146,8 @@ UPDATE my_areas set last_updated = TO_DATE('01012020','DDMMYYYY');
 COMMIT;
 */
 ALTER TRIGGER strava.my_areas_last_updated ENABLE;
+
+alter table strava.my_areas MOVE TABLESPACE data UPDATE INDEXES;
 
 desc my_areas
 show errors

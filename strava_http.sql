@@ -439,6 +439,8 @@ FUNCTION http_request
   l_resp   UTL_HTTP.resp;
   l_buffer VARCHAR2(32767);
   l_clob   CLOB;
+  l_header_name   VARCHAR2(256 CHAR);
+  l_header_value  VARCHAR2(1024 CHAR);
 
   k_action CONSTANT VARCHAR2(64 CHAR) := 'http_request';
   l_module VARCHAR2(64 CHAR);
@@ -449,13 +451,18 @@ BEGIN
 
   dbms_output.put_line('URL:'||p_url);
   l_req := UTL_HTTP.begin_request(p_url/*, 'GET', 'HTTP/1.1'*/);
-
+   
   IF p_redirect >= 0 THEN --restrict http redirect - mainly for debug
     UTL_HTTP.set_follow_redirect(l_req, p_redirect);
   END IF;
 
   --UTL_HTTP.set_body_charset('UTF-8');
   l_resp := UTL_HTTP.get_response(l_req);
+
+  IF l_resp.status_code IN(301,302,303,307,308) THEN
+    UTL_HTTP.get_header_by_name(l_resp, 'Location',l_header_value,1); --get redirection URL in header
+    dbms_output.put_line(l_header_value);
+  End if;
 
   DBMS_LOB.createtemporary(l_clob, TRUE);
   LOOP
@@ -485,6 +492,12 @@ EXCEPTION
     dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
     RAISE;
   WHEN e_http_request_failed THEN
+    /*list all headers*/
+    FOR i IN 1 .. UTL_HTTP.get_header_count(l_resp) LOOP
+      UTL_HTTP.get_header(l_resp, i, l_header_name, l_header_value);
+      DBMS_OUTPUT.put_line(i ||':'|| l_header_name || ':' || l_header_value);
+    END LOOP;/**/
+  
     UTL_HTTP.end_response(l_resp);
     dbms_output.put_line(k_action||':'||sqlerrm);
     dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
@@ -1079,6 +1092,8 @@ PROCEDURE get_activity
   k_action CONSTANT VARCHAR2(64 CHAR) := 'get_activity';
   l_module VARCHAR2(64 CHAR);
   l_action VARCHAR2(64 CHAR);
+  
+  PRAGMA AUTONOMOUS_TRANSACTION;
 BEGIN
   dbms_application_info.read_module(module_name=>l_module,action_name=>l_action);
   dbms_application_info.set_module(module_name=>k_module,action_name=>k_action);
@@ -1146,7 +1161,7 @@ BEGIN
   IF r_activities.processing_status = k3_status_stream_loaded THEN
     strava_job.create_activity_hsearch_upd_job(r_activities.activity_id);
   END IF;
-
+  COMMIT;
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 EXCEPTION
   WHEN e_json_null_self THEN
@@ -1581,10 +1596,11 @@ END renew_strava_tokens;
 PROCEDURE update_strava_activity
 (p_activity_id IN activities.activity_id%TYPE
 ) IS
-  l_url      VARCHAR2(4000);
-  l_clob     CLOB;
+  l_url         VARCHAR2(4000);
+  l_clob        CLOB;
+  l_counter     INTEGER := 0;
 
-  j_obj      JSON_OBJECT_T;
+  j_obj         JSON_OBJECT_T;
   r_activities activities%ROWTYPE;
 
   k_action CONSTANT VARCHAR2(64 CHAR) := 'update_strava_activity';
@@ -1606,7 +1622,7 @@ BEGIN
   renew_strava_tokens;
   l_url := k_strava_api||'activities/'||p_activity_id;
   l_clob := strava_http_request(l_url); 
-  --pretty_json(l_clob); --qwert
+  --pretty_json(l_clob); 
   --Parse JSON array
   j_obj := JSON_OBJECT_T.parse(l_clob);
   --simple update of rowtype from json
@@ -1615,23 +1631,31 @@ BEGIN
   --clean string after incorrect character set conversion
   r_activities.description := clean_string(r_activities.description);
 
-  --update the PlaceCloud in description
-  strava_sdo.update_activity_description(r_activities);
+  LOOP
+    l_counter := l_counter + 1;
+    --update the PlaceCloud in description 
+    strava_sdo.update_activity_description(r_activities);
   
-  l_clob := strava_http_request(l_url,'PUT','description='||r_activities.description); 
-  
-  --pretty_json(l_clob);
-  --print_clob(l_clob);
-  --Parse JSON array
-  j_obj := JSON_OBJECT_T.parse(l_clob);
+    l_clob := strava_http_request(l_url,'PUT','description='||r_activities.description); 
+    --pretty_json(l_clob);
+    --print_clob(l_clob);
+    --Parse JSON array
+    j_obj := JSON_OBJECT_T.parse(l_clob);
 
-  --l_description := normalize_to_utf8(j_obj.get_string('description'));
-  --l_description := j_obj.get_string('description');
-  IF r_activities.description = j_obj.get_string('description') THEN
-    dbms_output.put_line('Updated description for activity '||p_activity_id||' matches');
-  ELSE
-    dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' does not matchf');
-  END IF;
+    --l_description := normalize_to_utf8(j_obj.get_string('description'));
+    --l_description := j_obj.get_string('description');
+
+    IF r_activities.description = j_obj.get_string('description') THEN
+	  --r_activities.processing_status := k6_status_description_updated;
+      dbms_output.put_line('Updated description for activity '||p_activity_id||' matches');
+	  EXIT;
+    ELSE
+	  --sssr_activities.processing_status := k5_status_area_list_updated;
+      dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' does not matchf');
+	  EXIT WHEN l_counter >= 2;
+	  r_activities.description := clean_string(j_obj.get_string('description'));
+    END IF;
+  END LOOP;
   
   UPDATE activities
   SET ROW = r_activities

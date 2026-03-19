@@ -35,6 +35,9 @@ k2_superceded  CONSTANT INTEGER := 2;
 --this is a webhook set up and it is specified by the user and echoed back by Strava
 g_verify_token CONSTANT VARCHAR2(100) := 'PlaceCloud42'; 
 ----------------------------------------------------------------------------------------------------
+e_asset_not_found EXCEPTION; --strava asset not found
+PRAGMA EXCEPTION_INIT(e_asset_not_found,-20404);
+----------------------------------------------------------------------------------------------------
 PROCEDURE handle_post
 (p_body IN CLOB
 ,p_status_code IN OUT NUMBER
@@ -93,7 +96,6 @@ PROCEDURE process_queue IS
 
   l_processing_status INTEGER;
   l_status_msg CLOB;
-  l_counter    INTEGER := 0;
 
   l_obj        JSON_OBJECT_T;
   l_keys       JSON_KEY_LIST;
@@ -140,40 +142,47 @@ BEGIN
     FOR UPDATE OF h.processing_status 
     --SKIP LOCKED
   ) LOOP
-    l_counter := l_counter + 1;
-	--EXIT WHEN l_counter > 2;
     l_processing_status := NULL;  
-	l_status_msg := 'ID '||i.id||':';
+	l_status_msg := 'ID '||i.id||': '||INITCAP(i.object_type)||' '||i.object_id;
 	
     BEGIN
       IF i.aspect_type = 'delete' THEN
-	   
 	    IF i.activity_id IS NULL THEN --does not exist
-		  l_status_msg := l_status_msg||INITCAP(i.object_type)||' '||i.object_id||' does not exist.';
+		  l_status_msg := l_status_msg||' does not exist.';
 		  l_processing_status := k2_superceded;
 		ELSE --not already deleted
           DELETE FROM activities WHERE activity_id = i.activity_id;
-		  l_status_msg := l_status_msg||'Deleting activity '||i.activity_id||': '||sql%rowcount||' rows deleted.';
+		  l_status_msg := l_status_msg||' deleted. '||sql%rowcount||' rows deleted.';
 		  l_processing_status := k1_processed;
 	    END IF;
 
 	  ELSIF i.aspect_type = 'create' THEN
-	   
 	    IF i.activity_id IS NULL THEN --not already created
-	      strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
-		  l_processing_status := k1_processed;
-		  l_status_msg := l_status_msg||'Activity '||i.object_id||' extracted from Strava.';
+		  BEGIN
+  	        strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
+		    l_processing_status := k1_processed;
+		    l_status_msg := l_status_msg||' extracted from Strava.';
+		  EXCEPTION
+		    WHEN e_asset_not_found THEN
+     	      l_status_msg := l_status_msg||'. '||sqlerrm;
+		      l_processing_status := ABS(sqlcode);
+		  END;
 		ELSE
 		  l_processing_status := k2_superceded;
-		  l_status_msg := l_status_msg||'Activity '||i.activity_id||' already created.  Skipped.';
+		  l_status_msg := l_status_msg||' already created. Skipped.';
 		END IF;
 
 	  ELSIF i.aspect_type = 'update' THEN
-
 	    IF i.activity_id IS NULL THEN --not already created so create it
-		  strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
-		  l_processing_status := k1_processed;
-	      l_status_msg := l_status_msg||'Activity '||i.object_id||' extracted from Strava.';
+		  BEGIN
+  	  	    strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
+		    l_processing_status := k1_processed;
+	        l_status_msg := l_status_msg||' extracted from Strava.';
+		  EXCEPTION
+		    WHEN e_asset_not_found THEN
+     	      l_status_msg := l_status_msg||'. '||sqlerrm;
+		      l_processing_status := ABS(sqlcode);
+		  END;
 		ELSE
           -- Parse JSON
           l_obj := JSON_OBJECT_T.parse(i.updates);
@@ -181,7 +190,7 @@ BEGIN
           l_keys := l_obj.get_keys;
 		  l_num_keys := l_keys.COUNT;
 		  IF l_num_keys > 0 THEN 
-            l_status_msg := l_status_msg||'Activity '||i.activity_id||': Updating '||l_num_keys||' fields';
+            l_status_msg := l_status_msg||': Updating '||l_num_keys||' fields';
 		    l_sql := 'UPDATE ACTIVITIES ';
 		    l_sep := 'SET ';
             FOR i IN 1 .. l_keys.COUNT LOOP
@@ -215,12 +224,12 @@ BEGIN
 		    WHERE activity_id = i.activity_id;
 		    strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
 			l_processing_status := k1_processed;
-   	        l_status_msg := l_status_msg||'Activity '||i.object_id||' re-extracted from Strava.';
+   	        l_status_msg := l_status_msg||' re-extracted from Strava.';
 		  END IF;
 	    END IF;
 
 	  ELSE 	   
-	    l_status_msg := l_status_msg||'Unknown action '||i.aspect_type||' object '||i.object_id;
+	    l_status_msg := l_status_msg||'. Unknown action ';
 	    l_processing_status := 0;  
       END IF;
       dbms_output.put_line(l_status_msg);
@@ -232,7 +241,6 @@ BEGIN
 	    ,   status_msg = l_status_msg 
         WHERE id = i.id;
 
-        --COMMIT;
 	  END IF;
 	EXCEPTION
       WHEN OTHERS THEN
@@ -243,8 +251,6 @@ BEGIN
         SET processing_status = l_processing_status
 		,   status_msg = l_status_msg
         WHERE id = i.id;
-
-        --COMMIT;
 	  
 	END;
   END LOOP;
@@ -267,10 +273,10 @@ BEGIN
 
   /*delete processed webhook events older than 1 week*/
   DELETE webhook_events u
-  WHERE  processing_status > 0
-  AND    last_updated < l_max_date
+  WHERE  (processing_status > 0 OR (processing_status = 0 AND aspect_type IS NULL))
+  AND    (last_updated < l_max_date
   --AND    event_time < l_max_date
-  AND    received_at < l_max_date
+  AND    received_at < l_max_date)
   RETURNING count(*) INTO l_num_rows;
   
   dbms_output.put_line(k_action||':'||l_num_rows||' processed events purged from queue up to '||l_max_date);
