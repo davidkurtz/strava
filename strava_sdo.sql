@@ -117,6 +117,7 @@ k_geom_line  CONSTANT INTEGER := 2002;
 ----------------------------------------------------------------------------------------------------
 k_ampersand  CONSTANT VARCHAR2(1 CHAR)  := CHR(38);
 k_lf         CONSTANT VARCHAR2(1 CHAR)  := CHR(10);
+k_spc        CONSTANT VARCHAR2(1 CHAR)  := ' ';
 ----------------------------------------------------------------------------------------------------
 --Activity Statuses
 ----------------------------------------------------------------------------------------------------
@@ -295,6 +296,8 @@ BEGIN
 		      ||k_lf||k_placecloud_footer;
 
   --dbms_output.put_line('New Placecloud report: '||l_placecloud_rep);
+  p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
+  p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
 	
   IF p_activities.description IS NULL THEN
     p_activities.description := l_placecloud_rep;
@@ -306,13 +309,21 @@ BEGIN
 	  l_placecloud_end := INSTR(p_activities.description,k_placecloud_footer,l_placecloud_pos,1);
  	  --dbms_output.put_line('PlaceCloud End:'||l_placecloud_end);
 	  IF l_placecloud_end>0 THEN
-	    p_activities.description := SUBSTR(p_activities.description,1,l_placecloud_pos-1)||SUBSTR(p_activities.description,l_placecloud_end+LENGTH(k_placecloud_footer));
+	    p_activities.description := SUBSTR(p_activities.description,1,l_placecloud_pos-1)
+		                          ||SUBSTR(p_activities.description,l_placecloud_end+LENGTH(k_placecloud_footer));
 	  ELSE
 	    p_activities.description := SUBSTR(p_activities.description,1,l_placecloud_pos-1);
 	  END IF;
 	END LOOP;    
 
-    p_activities.description := RTRIM(p_activities.description,k_lf)||k_lf||l_placecloud_rep;
+    p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
+    p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
+	
+    IF p_activities.description IS NULL THEN 
+	  p_activities.description := l_placecloud_rep;
+	ELSE 
+      p_activities.description := p_activities.description||k_lf||l_placecloud_rep;
+	END IF;
     --DBMS_LOB.writeappend(p_activities.description,LENGTH(l_placecloud_rep),l_placecloud_rep);
   END IF;
   

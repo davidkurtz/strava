@@ -76,7 +76,7 @@ BEGIN
     dbms_scheduler.set_attribute(name => k_job_name, 
 	                             attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '1' SECOND);
     dbms_scheduler.enable(name => k_job_name);
-	--dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
+	dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
   END IF;
 END;
 /
@@ -345,7 +345,10 @@ END;
 ----------------------------------------------------------------------------------------------------
 -- this is the queue
 ----------------------------------------------------------------------------------------------------
-select * from strava.webhook_events order by received_at desc 
+--delete from strava.webhook_events where id IN(294,295);
+select * from strava.webhook_events 
+--where processing_status <= 0
+order by received_at desc 
 --fetch first 5 rows ONLY
 /
 ----------------------------------------------------------------------------------------------------
@@ -363,12 +366,6 @@ order by 2, last_updated
 
 --update activities set processing_status = 4 where activity_id = 17639318537;
 ----------------------------------------------------------------------------------------------------
---reprocess messages that have errored
-----------------------------------------------------------------------------------------------------
-update webhook_events set processing_status = 0 where processing_status <= 0;
-commit;
-
-----------------------------------------------------------------------------------------------------
 -- queue processing jobs
 ----------------------------------------------------------------------------------------------------
 select * from dba_scheduler_jobs where owner = 'STRAVA' AND job_name = 'PROCESS_WEBHOOK_QUEUE_JOB';
@@ -379,6 +376,23 @@ FETCH FIRST 50 ROWS ONLY
 
 
 ----------------------------------------------------------------------------------------------------
+--reprocess messages that have errored
+----------------------------------------------------------------------------------------------------
+update webhook_events set processing_status = 0 where processing_status < 0;
+commit;
+
+----------------------------------------------------------------------------------------------------
 --manually process the queue
 ----------------------------------------------------------------------------------------------------
+set serveroutput on 
 exec dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
+
+DECLARE
+  k_job_name CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB';
+BEGIN
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '1' SECOND);
+  dbms_scheduler.enable(name => k_job_name);
+  --dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
+END;
+/
+

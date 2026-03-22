@@ -101,8 +101,7 @@ PROCEDURE process_queue IS
   l_keys       JSON_KEY_LIST;
   l_key        VARCHAR2(128 CHAR);
   l_num_keys   INTEGER;
-  l_value      CLOB;
-  l_sep        VARCHAR2(4 CHAR);
+  l_value      VARCHAR2(4000);
   l_column     VARCHAR2(128 CHAR);
   l_sql        CLOB;
 
@@ -183,7 +182,7 @@ BEGIN
      	      l_status_msg := l_status_msg||'. '||sqlerrm;
 		      l_processing_status := ABS(sqlcode);
 		  END;
-		ELSE
+		ELSE --activity is not null
           -- Parse JSON
           l_obj := JSON_OBJECT_T.parse(i.updates);
           -- Get all keys
@@ -191,10 +190,8 @@ BEGIN
 		  l_num_keys := l_keys.COUNT;
 		  IF l_num_keys > 0 THEN 
             l_status_msg := l_status_msg||': Updating '||l_num_keys||' fields';
-		    l_sql := 'UPDATE ACTIVITIES ';
-		    l_sep := 'SET ';
-            FOR i IN 1 .. l_keys.COUNT LOOP
-              l_key := lower(l_keys(i));
+            FOR j IN 1 .. l_keys.COUNT LOOP
+              l_key := lower(l_keys(j));
               -- Get value as string
               l_value := l_obj.get_string(l_key);
               -- Process only specific keys
@@ -204,24 +201,30 @@ BEGIN
 			    ELSE 
 				  l_column := l_key;
 				END IF;
-                --DBMS_OUTPUT.put_line('Processing: ' || l_key || ' = ' || l_value);
-	            l_sql := l_sql||l_sep||l_column||' = '''||l_value||'''';
+
+                l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = :1 WHERE activity_id = :2';
+                IF l_key = 'private' THEN
+  			    dbms_output.put_line(k_action||':'||l_sql||';'||l_value||','||i.activity_id);
+			    EXECUTE IMMEDIATE l_sql USING l_value, i.activity_id;
+  				  l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = TO_BOOLEAN(:1 DEFAULT NULL ON CONVERSION ERROR) WHERE activity_id = :2';
+				ELSE
+				  l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = :1 WHERE activity_id = :2';
+				END IF;
+  			    dbms_output.put_line(k_action||':'||l_sql||';'||l_value||','||i.activity_id);
+			    EXECUTE IMMEDIATE l_sql USING l_value, i.activity_id;
+				dbms_output.put_line(sql%rowcount||' rows updated');
               ELSE
-			    NULL;
-                --DBMS_OUTPUT.put_line('Skipping: ' || l_key);
+				l_status_msg := l_status_msg||': '||'skipping ' || l_key;
               END IF;
-	          l_sep := ', ';
             END LOOP;
-			l_sql := l_sql||' WHERE activity_id = :1';
-			--dbms_output.put_line(k_action||':'||l_sql);
-			EXECUTE IMMEDIATE l_sql USING i.activity_id;
 			l_processing_status := k1_processed;
 			l_status_msg := l_status_msg||': '||l_sql;
 
-		  ELSE 
-   		    UPDATE activities
-		    SET processing_status = 1 --force activity to full reprocess
-		    WHERE activity_id = i.activity_id;
+		  ELSIF i.activity_id IS NOT NULL THEN --no recognised columns to update
+            UPDATE activities
+            SET    processing_status = 1 --force activity to full reprocess
+            WHERE  activity_id = i.activity_id;
+			
 		    strava_http.get_activity(i.object_id,p_get_stream=>TRUE);
 			l_processing_status := k1_processed;
    	        l_status_msg := l_status_msg||' re-extracted from Strava.';
@@ -230,27 +233,27 @@ BEGIN
 
 	  ELSE 	   
 	    l_status_msg := l_status_msg||'. Unknown action ';
-	    l_processing_status := 0;  
+	    l_processing_status := -1;  
       END IF;
       dbms_output.put_line(l_status_msg);
 
       IF l_processing_status IS NOT NULL THEN
-
         UPDATE strava.webhook_events
-        SET processing_status = l_processing_status
-	    ,   status_msg = l_status_msg 
-        WHERE id = i.id;
-
+        SET    processing_status = l_processing_status
+	    ,      status_msg = l_status_msg 
+        WHERE  id = i.id;
 	  END IF;
+	  
 	EXCEPTION
       WHEN OTHERS THEN
 	    dbms_output.put_line(l_status_msg);
+	    dbms_output.put_line(sqlerrm);
 	    l_status_msg := sqlerrm;
 		l_processing_status := sqlcode;
         UPDATE strava.webhook_events
-        SET processing_status = l_processing_status
-		,   status_msg = l_status_msg
-        WHERE id = i.id;
+        SET    processing_status = l_processing_status
+		,      status_msg = l_status_msg
+        WHERE  id = i.id;
 	  
 	END;
   END LOOP;

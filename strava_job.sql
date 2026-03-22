@@ -103,8 +103,8 @@ BEGIN
   ELSIF r_job_class.logging_level = 'FULL' THEN
     dbms_Scheduler.set_attribute(p_job_class_name, 'logging_level', DBMS_SCHEDULER.LOGGING_FULL);
   END IF;
-  dbms_Scheduler.set_attribute(p_job_class_name, 'log_history'            , TO_CHAR(r_job_class.log_history));
-  dbms_Scheduler.set_attribute(p_job_class_name, 'comments'               , r_job_class.comments);
+  dbms_Scheduler.set_attribute(p_job_class_name, 'log_history'    , r_job_class.log_history);
+  dbms_Scheduler.set_attribute(p_job_class_name, 'comments'       , r_job_class.comments);
   
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 EXCEPTION 
@@ -175,7 +175,7 @@ BEGIN
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'           ,value => FALSE);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'           ,value => k_job_class); 
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL'     
-                                                 , value => 'FREQ=DAILY;BYHOUR=0,1,2,9,15,18,21;BYMINUTE=0,15,30,45');
+                                                 , value => 'FREQ=DAILY;BYHOUR=1,2,3,9,15,18,21;BYMINUTE=0,15,30,45');
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS' ,value => 2);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'          ,value => l_next_start);
   dbms_scheduler.set_job_anydata_value(job_name => k_job_name,argument_position => 1 --quota_pct
@@ -225,7 +225,7 @@ BEGIN
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'           ,value => FALSE);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'           ,value => k_job_class); 
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL'     
-                                                 , value => 'FREQ=DAILY;BYHOUR=0,1,2,9,15,18,21;BYMINUTE=0,15,30,45');
+                                                 , value => 'FREQ=DAILY;BYHOUR=1,2,3,9,15,18,21;BYMINUTE=0,15,30,45');
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS' ,value => 2);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'          ,value => l_next_start);
   dbms_scheduler.set_job_anydata_value(job_name => k_job_name,argument_position => 1 --quota_pct
@@ -258,17 +258,18 @@ BEGIN
   create_job_class(k_job_class,'MEDIUM', p_log_history=>7);
   BEGIN
     dbms_scheduler.create_job   
-    (job_name => k_job_name
-    ,job_type => 'STORED_PROCEDURE'
+    (job_name   => k_job_name
+    ,job_type   => 'STORED_PROCEDURE'
     ,job_action => 'STRAVA.WEBHOOK_PKG.PROCESS_QUEUE'
-    ,enabled => FALSE
+    ,enabled    => FALSE
     );
   EXCEPTION WHEN e_job_already_exists THEN NULL;
   END;
 
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_ACTION', value => 'STRAVA.WEBHOOK_PKG.PROCESS_QUEUE');
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP' , value => FALSE);
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS' , value => k_job_class); 
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_ACTION'      , value => 'STRAVA.WEBHOOK_PKG.PROCESS_QUEUE');
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'       , value => FALSE);
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL' , value => 'FREQ=DAILY;BYHOUR=0;BYMINUTE=42');
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'       , value => k_job_class); 
 
   DBMS_SCHEDULER.set_resource_constraint 
   (object_name   => k_job_name
@@ -341,7 +342,7 @@ BEGIN
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS', value => k_job_class);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'      
                               ,value => TRUNC(SYSTIMESTAMP AT TIME ZONE 'UTC') + INTERVAL '1' DAY + INTERVAL '42' MINUTE);
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL' ,value => 'FREQ=DAILY;BYHOUR=0;BYMINUTE=42');
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL' ,value => 'FREQ=DAILY;BYHOUR=1;BYMINUTE=42');
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS', value => 0);
   dbms_scheduler.enable(name => k_job_name);
 
@@ -614,9 +615,11 @@ EXECUTE strava_job.create_process_webhook_queue_job;
 --EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
 --execute STRAVA.STRAVA_SDO.ACTIVITY_AREA_LIST_UPD_ALL;
 
---clear screen
---set serveroutput on
---exec STRAVA.STRAVA_HTTP.BATCH_UPDATE_STRAVA_ACTIVITY(100,100);
+/*
+clear screen
+set serveroutput on
+exec STRAVA.STRAVA_HTTP.BATCH_UPDATE_STRAVA_ACTIVITY(100,100);
+*/
 
 set echo off
 /*
@@ -688,6 +691,16 @@ where owner = 'STRAVA' --AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
 ORDER BY 1 desc,2 
 FETCH FIRST 50 ROWS ONLY
 /
+
+
+
+select REGEXP_REPLACE(job_name, '[0-9]+$', '') --, trunc(log_date)
+, count(*) num_jobs
+from dba_scheduler_job_run_details
+where owner = 'STRAVA' 
+group by REGEXP_REPLACE(job_name, '[0-9]+$', '') --, trunc(log_date)
+order by 1 desc 
+/
 */
 
 spool off
@@ -699,3 +712,5 @@ clear screen
 set serveroutput on echo on
 EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB');
 */
+
+

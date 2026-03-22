@@ -5,6 +5,7 @@ spool update_my_areas_name_hierarchhy.lst
 
 alter TRIGGER strava.my_areas_update_name disable;
 
+--reset heirarchies
 update my_areas
 set name_hierarchy = name
 where parent_area_code is null
@@ -21,18 +22,22 @@ create global temporary table my_area_hierarchy
 ,area_number integer not null
 ,name_hierarchy VARCHAR2(4000)
 ,constraint my_area_hierarchy_pk primary key  (area_code, area_number)
-);
+) on commit delete rows;
 
 select count(*), count(name_hierarchy)
 from my_areas;
 
+truncate table my_area_hierarchy;
 insert into my_area_hierarchy
 select area_code, area_number
-, strava_sdo.name_hierarchy_fn(area_code, area_number) name_hierarchy_fn
+, strava_sdo.name_hierarchy_fn(area_code, area_number, 'A') name_hierarchy_fn
 from my_areas
---where name_hierarchy IS null
+where name_hierarchy IS null
+or parent_area_code = 'UCTL'
+or area_code = 'UCTL'
 --fetch first 10000 rows only
 ;
+select * from my_area_hierarchy;
 
 merge into my_areas u
 using (
@@ -48,3 +53,5 @@ alter TRIGGER strava.my_areas_update_name enable;
 spool off
 
 
+select * from my_areas
+where name like '%Kilruddery%';

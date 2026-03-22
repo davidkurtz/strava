@@ -161,12 +161,6 @@ BEGIN
 */
 END booltochar;
 ----------------------------------------------------------------------------------------------------
-FUNCTION chartobool(p_boolchar VARCHAR2)
-RETURN BOOLEAN IS
-BEGIN
-  RETURN CAST(p_boolchar AS BOOLEAN);
-END chartobool;
-----------------------------------------------------------------------------------------------------
 FUNCTION iso8601_utc(p_iso8601_utc VARCHAR2) 
 RETURN TIMESTAMP WITH TIME ZONE IS
 BEGIN
@@ -946,12 +940,12 @@ BEGIN
     r_activities.elevation_low     := j_obj.get_number('elev_low');
     r_activities.average_watts     := j_obj.get_number('average_watts');
     r_activities.kilojoules        := j_obj.get_number('kilojoules');
-    r_activities.trainer           := chartobool(j_obj.get_string('trainer'));
-    r_activities.commute           := chartobool(j_obj.get_string('commute'));
-    r_activities.manual            := chartobool(j_obj.get_string('manual'));
-    r_activities.private           := chartobool(j_obj.get_string('private'));
+    r_activities.trainer           := TO_BOOLEAN(j_obj.get_string('trainer'));
+    r_activities.commute           := TO_BOOLEAN(j_obj.get_string('commute'));
+    r_activities.manual            := TO_BOOLEAN(j_obj.get_string('manual'));
+    r_activities.private           := TO_BOOLEAN(j_obj.get_string('private'));
     r_activities.visibility        := j_obj.get_string('visibility');
-    r_activities.flagged           := chartobool(j_obj.get_string('flagged'));
+    r_activities.flagged           := TO_BOOLEAN(j_obj.get_string('flagged'));
     r_activities.photo_count       := j_obj.get_number('total_photo_count');
 ----------------------------------------------------------------------------------------------------  
 --only decode polyline if status <= 1
@@ -1059,12 +1053,12 @@ BEGIN
   p_activities.average_watts    := p_jobj.get_number('average_watts');
   p_activities.calories         := p_jobj.get_number('calories');
   p_activities.kilojoules       := p_jobj.get_number('kilojoules');
-  p_activities.trainer          := chartobool(p_jobj.get_string('trainer'));
-  p_activities.commute          := chartobool(p_jobj.get_string('commute'));
-  p_activities.manual           := chartobool(p_jobj.get_string('manual'));
-  p_activities.private          := chartobool(p_jobj.get_string('private'));
+  p_activities.trainer          := TO_BOOLEAN(p_jobj.get_string('trainer'));
+  p_activities.commute          := TO_BOOLEAN(p_jobj.get_string('commute'));
+  p_activities.manual           := TO_BOOLEAN(p_jobj.get_string('manual'));
+  p_activities.private          := TO_BOOLEAN(p_jobj.get_string('private'));
   p_activities.visibility       := p_jobj.get_string('visibility');
-  p_activities.flagged          := chartobool(p_jobj.get_string('flagged'));
+  p_activities.flagged          := TO_BOOLEAN(p_jobj.get_string('flagged'));
 
   --dbms_output.put_line('XXX3');
   p_activities.photo_count    := p_jobj.get_object('photos').get_number('count');
@@ -1652,7 +1646,7 @@ BEGIN
     ELSE
 	  --sssr_activities.processing_status := k5_status_area_list_updated;
       dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' does not matchf');
-	  EXIT WHEN l_counter >= 2;
+	  EXIT WHEN l_counter >= 1;
 	  r_activities.description := clean_string(j_obj.get_string('description'));
     END IF;
   END LOOP;

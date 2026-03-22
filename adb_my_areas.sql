@@ -112,8 +112,8 @@ ON my_areas
 FOR EACH ROW
 BEGIN
   UPDATE ACTIVITIES
-  SET    processing_status = 4
-  WHERE  processing_status BETWEEN 5 AND 8
+  SET    processing_status = 3
+  WHERE  processing_status BETWEEN 4 AND 8
   AND    activity_id IN (
     SELECT activity_id
     FROM   activity_areas
