@@ -343,7 +343,7 @@ BEGIN
   dbms_application_info.set_module(module_name=>k_module,action_name=>k_action);
 
   INSERT INTO api_log
-  (request_time, url, req_type, http_status, short_read_usage, long_read_usage, short_all_usage, long_all_usage)
+  (request_time, req_type, url, http_status, short_read_usage, long_read_usage, short_all_usage, long_all_usage)
   VALUES
   (SYSTIMESTAMP AT TIME ZONE 'UTC', p_req_type, p_url, p_http_status, g_short_read_usage, g_long_read_usage, g_short_all_usage, g_long_all_usage);
   commit;

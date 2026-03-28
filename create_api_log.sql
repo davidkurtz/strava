@@ -30,7 +30,7 @@ FROM api_log
 WHERE request_time > SYSTIMESTAMP - INTERVAL '15' MINUTE;
 
 select * from api_log
-WHERE request_time > SYSTIMESTAMP - INTERVAL '15' MINUTE;
+--WHERE request_time > SYSTIMESTAMP - INTERVAL '15' MINUTE;
 order by request_time desc
 /
 spool off
