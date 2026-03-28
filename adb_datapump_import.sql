@@ -4,16 +4,18 @@ set echo on serveroutput on
 ----------------------------------------------------------------------------------------------------
 -- list the files in the bucket does not work
 ----'https://lrp1qmpxv8ea.objectstorage.uk-london-1.oci.customer-oci.com/p/pWn6XY6QIIy_oRj5HFLiPD5pyU8ICOFTzowfBj5Qo-kFVUMEeN2R6W6oZiCiMRgC/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/?par=par-bucket-20260311-1945';
+--select * from dba_credentials;
+--desc dbms_cloud
 --------------------------------------------------------------------------------------------------
 DECLARE
-  l_uri VARCHAR2(200) := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/?par=par-bucket-20260311-1945';
+  l_uri VARCHAR2(200) := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/';
 BEGIN
   -- List objects in bucket to verify access
   DBMS_OUTPUT.PUT_LINE('Listing objects in bucket:'||l_uri);
   FOR r IN (
     SELECT * FROM TABLE(
       DBMS_CLOUD.LIST_OBJECTS
-	  (credential_name => NULL
+	  (credential_name => 'OBJECT_STORE_CRED'
       ,location_uri    => l_uri
       )
     )
