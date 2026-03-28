@@ -56,6 +56,8 @@ alter table my_areas add name_heirarchy VARCHAR(4000) /*as (strava_pkg.name_heir
 Create index my_areas_rfk_uqid on my_areas(parent_uqid);
 Create index my_areas_rfk_area_code on my_areas (parent_area_code, parent_area_number);
 
+alter index my_areas_pk rebuild compress 1;
+alter index my_areas_rfk_area_code rebuild compress 1;
 --create synonym my_Areas2 for my_areas;
 
 

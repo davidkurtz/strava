@@ -15,6 +15,16 @@ PROCEDURE create_purge_api_log_job;
 PROCEDURE create_purge_event_queue_job;
 PROCEDURE create_renew_strava_tokens_job;
 
+PROCEDURE create_job_class
+(p_job_class_name          all_scheduler_job_classes.job_class_name%TYPE
+,p_based_on_job_class      all_scheduler_job_classes.job_class_name%TYPE
+,p_resource_consumer_group all_scheduler_job_classes.resource_consumer_group%TYPE DEFAULT NULL
+,p_service                 all_scheduler_job_classes.service%TYPE                 DEFAULT NULL
+,p_logging_level           all_scheduler_job_classes.logging_level%TYPE           DEFAULT NULL
+,p_log_history             all_scheduler_job_classes.log_history%TYPE             DEFAULT NULL
+,p_comments                all_scheduler_job_classes.comments%TYPE                DEFAULT NULL
+);
+
 PROCEDURE create_get_activity_job
 (p_activity_id activities.activity_id%TYPE
 );
@@ -618,7 +628,7 @@ EXECUTE strava_job.create_process_webhook_queue_job;
 /*
 clear screen
 set serveroutput on
-exec STRAVA.STRAVA_HTTP.BATCH_UPDATE_STRAVA_ACTIVITY(100,100);
+exec STRAVA.STRAVA_HTTP.BATCH_UPDATE_STRAVA_ACTIVITY(10,10);
 */
 
 set echo off
@@ -694,11 +704,11 @@ FETCH FIRST 50 ROWS ONLY
 
 
 
-select REGEXP_REPLACE(job_name, '[0-9]+$', '') --, trunc(log_date)
+select REGEXP_REPLACE(job_name, '[0-9]+$', '') job_name, job_class, trunc(log_date)
 , count(*) num_jobs
-from dba_scheduler_job_run_details
+from dba_scheduler_job_log
 where owner = 'STRAVA' 
-group by REGEXP_REPLACE(job_name, '[0-9]+$', '') --, trunc(log_date)
+group by REGEXP_REPLACE(job_name, '[0-9]+$', ''), job_class, trunc(log_date)
 order by 1 desc 
 /
 */

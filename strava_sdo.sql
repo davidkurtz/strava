@@ -368,11 +368,11 @@ BEGIN
   MERGE INTO activities u
   USING (
     SELECT a.activity_id
-    ,      listagg(DISTINCT ma.name,', ') within group (order by ma.area_level, ma.name) area_list
+    ,      listagg(DISTINCT ma.name,', ') within group (order by ma.name_hierarchy) area_list
     FROM   activities a
       INNER JOIN activity_areas aa on a.activity_id = aa.activity_id
       INNER JOIN my_areas ma on ma.area_code = aa.area_code and ma.area_number = aa.area_number
-	  INNER JOIN my_area_codes mac ON mac.area_code = ma.area_code
+	  --INNER JOIN my_area_codes mac ON mac.area_code = ma.area_code
     WHERE a.activity_id = p_activity_id
 	AND a.processing_status = k4_status_areas_processed
 	and ma.matchable = 1
@@ -724,7 +724,7 @@ BEGIN
         l_name_hierarchy := i.name;
 	  ELSIF (l_count > 1) AND p_type IN('A','C') THEN
 	    IF i.name != l_last_name AND NOT l_last_name like i.name||' %'  THEN --supress repeated names
-          l_name_hierarchy := l_name_hierarchy ||', '|| i.name;
+          l_name_hierarchy := i.name ||', '|| l_name_hierarchy;
         END IF;
 	  END IF;
       l_last_name := i.name;

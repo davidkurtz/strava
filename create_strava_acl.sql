@@ -14,6 +14,9 @@ column description format a40
 clear screen
 spool create_strava_acl.lst
 ----------------------------------------------------------------------------------------------------
+exec DBMS_NETWORK_ACL_ADMIN.drop_acl(acl => 'strava_acl.xml');
+select * FROM dba_network_acls;
+
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.create_acl (
     acl          => 'strava_acl.xml',
@@ -40,21 +43,24 @@ BEGIN
   );
 END;
 /
+select * FROM dba_network_acls;
 ----------------------------------------------------------------------------------------------------
---https://data-sdublincoco.opendata.arcgis.com/api/download/v1/items/ff110185dc924e5698b46f595fe6488b/geojson?layers=0
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
+    host => 'data-osi.opendata.arcgis.com',
+	--host => '*.arcgis.com',
+	------------------------------------------------------------
 	--host => 'data.gov.ie',
 	--host => 'data-sdublincoco.opendata.arcgis.com',
     --host => 'hub.arcgis.com',
 	--host => 'tg-arcgisazurecdataprodeu1.az.arcgis.com',
-    --host => 'data-osi.opendata.arcgis.com',
     --host => 'osm-boundaries.com',
     --host => 'simplemaps.com',
     --host => '*.arcgis.com',
     --host => '*.opendatani.gov.uk',
-    host => '*.data.gov.uk',
+    --host => '*.data.gov.uk',
 	--host => '*.cloudflarestorage.com',
+	--host => 'labs.karavia.ch',
     ace  => xs$ace_type(
               privilege_list => xs$name_list('connect','http'),
               principal_name => 'STRAVA',
@@ -63,7 +69,15 @@ END;
 /
 
 ----------------------------------------------------------------------------------------------------
-select * from DBA_XS_ACES where principal = 'STRAVA';
+BEGIN 
+  FOR i IN (select * FROM dba_network_acls where acl like 'NETWORK_ACL%') LOOP
+    DBMS_NETWORK_ACL_ADMIN.drop_acl(acl => i.acl);
+  END LOOP;
+END;
+/
+----------------------------------------------------------------------------------------------------
+select * from DBA_XS_ACES where principal IN('ADMIN','STRAVA');
 select * from dba_xs_acls where name IN (SELECT acl from DBA_XS_ACES where principal = 'STRAVA');
 select * FROM dba_network_acls;
+----------------------------------------------------------------------------------------------------
 spool off

@@ -331,6 +331,7 @@ END pretty_json;
 ----------------------------------------------------------------------------------------------------
 PROCEDURE api_log 
 (p_url         VARCHAR2
+,p_req_type    VARCHAR2 
 ,p_http_status NUMBER
 ) IS
   PRAGMA AUTONOMOUS_TRANSACTION;
@@ -342,9 +343,9 @@ BEGIN
   dbms_application_info.set_module(module_name=>k_module,action_name=>k_action);
 
   INSERT INTO api_log
-  (request_time, url, http_status, short_read_usage, long_read_usage, short_all_usage, long_all_usage)
+  (request_time, url, req_type, http_status, short_read_usage, long_read_usage, short_all_usage, long_all_usage)
   VALUES
-  (SYSTIMESTAMP AT TIME ZONE 'UTC', p_url, p_http_status, g_short_read_usage, g_long_read_usage, g_short_all_usage, g_long_all_usage);
+  (SYSTIMESTAMP AT TIME ZONE 'UTC', p_req_type, p_url, p_http_status, g_short_read_usage, g_long_read_usage, g_short_all_usage, g_long_all_usage);
   commit;
   
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
@@ -603,7 +604,7 @@ BEGIN
                             ||', daily read usage: ' || g_long_read_usage || '/' || g_long_read_limit
                             ||', daily all usage: ' || g_long_all_usage || '/' || g_long_all_limit);
 
-  api_log(p_url, l_resp.status_code);
+  api_log(p_url, p_req_type, l_resp.status_code);
 
   IF l_resp.status_code = 200 THEN
     NULL; --ok
@@ -1021,7 +1022,7 @@ BEGIN
   
   ----------------------------------------------------------------------------------------------------
   --p_activities.description       := normalize_to_utf8(p_jobj.get_string('description'));
-  p_activities.description       := p_jobj.get_string('description');
+  p_activities.description       := p_jobj.get_clob('description');
   ----------------------------------------------------------------------------------------------------
 
   p_activities.elapsed_time      := p_jobj.get_number('elapsed_time');
@@ -1121,7 +1122,7 @@ BEGIN
 ----------------------------------------------------------------------------------------------------  
   l_sigmatch := strava_sig.activities_signature(r_activities,'C'); --check signature
   IF NOT l_sigmatch OR (p_get_stream AND r_activities.processing_status <= k2_status_activity_loaded) THEN
-    r_activities.map_polyline     := j_obj.get_object('map').get_string('polyline');
+    r_activities.map_polyline     := j_obj.get_object('map').get_clob('polyline');
 	IF r_activities.manual THEN
 	  r_activities.GEOM := NULL;
 	  r_activities.GPX := NULL;

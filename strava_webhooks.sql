@@ -356,11 +356,11 @@ order by received_at desc
 ----------------------------------------------------------------------------------------------------
 show parameters undo
 select activity_id, versions_endscn
-, last_updated, description 
+, last_updated, area_list, description , processing_status
 from activities 
 VERSIONS BETWEEN TIMESTAMP systimestamp - INTERVAL '56' HOUR
                         AND systimestamp
-where activity_id = 7518655826
+where activity_id = 17892214718
 order by 2, last_updated
 ;
 

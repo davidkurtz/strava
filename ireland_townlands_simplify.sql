@@ -36,7 +36,7 @@ BEGIN
 	IF l_last_word IN('Upper','Lower','Middle'
 	                 ,'North','South','East','West'
 					 ,'Big','Great','Little','Beg','More'
-					 ,'Demesne','Deerpark','Paddock','Mountain','Domain'
+					 ,'Demesne','Deerpark','Paddock','Mountain','Domain','Commons'
 					 ) THEN
       l_name := l_other_words;
 	ELSE 
@@ -91,10 +91,13 @@ BEGIN
     from   my_areas t, my_areas s, my_areas p
     where  t.area_code IN('TOWN')
     and    s.area_code IN('TOWN')
-    and    p.area_code = 'CTY' --children of county
+    --and    p.area_code = 'CTY' --children of county
     --and    p.area_number = 70000 --qwert
-	and    p.parent_area_code = 'PROV'
-	and    p.parent_area_number IN(27001,27002,27003,27004)
+	--and    p.area_code = 'CTY' --children of county
+	--and    p.parent_area_code = 'PROV'
+	--and    p.parent_area_number IN(27001,27002,27003,27004)
+    and    p.area_number = 35001 --qwert
+	and    p.area_code = 'SETL' --children of county
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -225,9 +228,11 @@ BEGIN
     from   my_areas t, my_areas s, my_areas p
     where  t.area_code IN('UCTL')
     and    s.area_code IN('UCTL')
-    and    p.area_code = 'CTY' --children of county
-	and    p.parent_area_code = 'PROV'
-	and    p.parent_area_number IN(27001,27002,27003,27004)
+    --and    p.area_code = 'CTY' --children of county
+	--and    p.parent_area_code = 'PROV'
+	--and    p.parent_area_number IN(27001,27002,27003,27004)
+    and    p.area_code = 'SETL' --children of county
+	and    p.parent_area_number IN(35001)
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -360,10 +365,12 @@ BEGIN
     from   my_areas t, my_areas u, my_areas p
     where  t.area_code IN('TOWN')
     and    u.area_code IN('UCTL')
-    and    p.area_code = 'CTY' --children of county
+    --and    p.area_code = 'CTY' --children of county
 	--and    p.area_number = 250000 --Wicklow
-	and    p.parent_area_code = 'PROV'
-	and    p.parent_area_number IN(27001,27002,27003,27004)
+	--and    p.parent_area_code = 'PROV'
+	--and    p.parent_area_number IN(27001,27002,27003,27004)
+    and    p.area_code = 'SETL' --children of county
+	and    p.area_number = 35001 --Wicklow
     and    p.area_code = u.parent_area_code
     and    p.area_number = u.parent_area_number
     and    p.area_code = t.parent_area_code

@@ -147,9 +147,10 @@ DECLARE
 BEGIN 
   SELECT geo_json INTO l_clob FROM stage_geo_data 
   WHERE name = 'OSMB-a4cc989e9d08fd47ef13d7d439df8cd84f6b09c6.geojson';
-  l_clob := strava_http.clean_clob(l_clob);
+  --l_clob := strava_http.clean_clob(l_clob);
   --strava_http.pretty_json(l_clob);
   j_root := JSON_OBJECT_T.parse(l_clob);
+  strava_http.pretty_json(l_root); --qwert
 
   j_crs := j_root.get_object('crs');
   --l_clob := j_crs.to_clob;
