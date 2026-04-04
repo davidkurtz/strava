@@ -11,6 +11,7 @@ PROCEDURE pretty_json(p_raw_json CLOB);
 FUNCTION iso8601_utc(p_iso8601_utc VARCHAR2) RETURN TIMESTAMP WITH TIME ZONE;
 FUNCTION clean_clob(p_clob IN CLOB) RETURN CLOB;
 FUNCTION clean_string(p_clob IN CLOB) RETURN CLOB;
+--PROCEDURE api_log_usage;;
 
 FUNCTION http_request 
 (p_url IN VARCHAR2
@@ -92,6 +93,7 @@ k_strava_api             CONSTANT VARCHAR2(32 CHAR) := 'https://www.strava.com/a
 k_creator                CONSTANT VARCHAR2(64 CHAR) := 'GFCStavaPlaceCloud';
 k_iso8601                CONSTANT VARCHAR2(32 CHAR) := 'YYYY-MM-DD"T"HH24:MI:SS"Z"';
 k_iso8601_tzr            CONSTANT VARCHAR2(32 CHAR) := 'YYYY-MM-DD"T"HH24:MI:SS"Z" TZR';
+k_display_date           CONSTANT VARCHAR2(32 CHAR) := 'dd Month yyyy';
 k_max_athlete_activities CONSTANT INTEGER := 200;
 ----------------------------------------------------------------------------------------------------
 --special characters
@@ -381,6 +383,7 @@ BEGIN
   IF g_usage_ts IS NULL THEN
     g_usage_ts := l_ts;
   END IF;
+  --dbms_output.put_line('usage ts:'||TO_CHAR(g_usage_ts,k_iso8601));
 
   BEGIN
     WITH l as (
@@ -407,15 +410,20 @@ BEGIN
 	g_long_all_usage := 0;
 	g_usage_ts := SYSTIMESTAMP AT TIME ZONE 'UTC';
   END;
+  --dbms_output.put_line('usage ts:'||TO_CHAR(g_usage_ts,k_iso8601));  
   
-  IF g_usage_ts < l_ts THEN 
-    g_long_all_usage := 0;
-	g_long_read_usage := 0;
-  END IF;
   l_ts := TRUNC(l_ts, 'HH24') + NUMTODSINTERVAL(FLOOR(EXTRACT(MINUTE FROM l_ts) / 15) * 15, 'MINUTE');
+  --dbms_output.put_line('short ts:'||TO_CHAR(l_ts,k_iso8601));  
   IF g_usage_ts < l_ts THEN
     g_short_all_usage := 0;
 	g_short_read_usage := 0;
+  END IF;
+
+  l_ts := TRUNC(l_ts);
+  --dbms_output.put_line('long ts:'||TO_CHAR(l_ts,k_iso8601));  
+  IF g_usage_ts < l_ts THEN 
+    g_long_all_usage := 0;
+	g_long_read_usage := 0;
   END IF;
 
   DBMS_OUTPUT.put_line('API Log:15-min read usage: ' || g_short_read_usage || '/' || g_short_read_limit
@@ -1625,28 +1633,36 @@ BEGIN
   
   --clean string after incorrect character set conversion
   r_activities.description := clean_string(r_activities.description);
+  --dbms_output.put_line('Description:'||r_activities.description);
 
   LOOP
     l_counter := l_counter + 1;
     --update the PlaceCloud in description 
-    strava_sdo.update_activity_description(r_activities);
-  
-    l_clob := strava_http_request(l_url,'PUT','description='||r_activities.description); 
+	
+	IF dbms_lob.INSTR(r_activities.description,r_activities.area_list) > 0 THEN 
+      r_activities.processing_status := k6_status_description_updated;
+	  dbms_output.put_line('Area List found in Description for activity '||p_activity_id||' ('
+	                     ||regexp_replace(TO_CHAR(r_activities.start_date_utc,k_display_date),' {2,}',' ')||' - '||r_activities.name
+						 ||'). No further Strava update');
+      dbms_output.put_line('Area List:'||r_activities.area_list); --qwert
+      dbms_output.put_line('Local description:'||r_activities.description); 
+	  dbms_output.put_line('Strava description:'||j_obj.get_string('description')); 
+	  EXIT;
+    ELSE
+      strava_sdo.update_activity_description(r_activities);
+      l_clob := strava_http_request(l_url,'PUT','description='||r_activities.description); 
     --pretty_json(l_clob);
     --print_clob(l_clob);
     --Parse JSON array
-    j_obj := JSON_OBJECT_T.parse(l_clob);
 
-    --l_description := normalize_to_utf8(j_obj.get_string('description'));
-    --l_description := j_obj.get_string('description');
+      j_obj := JSON_OBJECT_T.parse(l_clob);
+      --l_description := normalize_to_utf8(j_obj.get_string('description'));
+      --l_description := j_obj.get_string('description');
 
-    IF r_activities.description = j_obj.get_string('description') THEN
-	  --r_activities.processing_status := k6_status_description_updated;
-      dbms_output.put_line('Updated description for activity '||p_activity_id||' matches');
-	  EXIT;
-    ELSE
-	  --sssr_activities.processing_status := k5_status_area_list_updated;
-      dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' does not matchf');
+	  --r_activities.processing_status := k5_status_area_list_updated;
+      dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' ('
+	                     ||regexp_replace(TO_CHAR(r_activities.start_date_utc,k_display_date),' {2,}',' ')||' - '||r_activities.name
+						 ||') but still does not match');
 	  EXIT WHEN l_counter >= 1;
 	  r_activities.description := clean_string(j_obj.get_string('description'));
     END IF;

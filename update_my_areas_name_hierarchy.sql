@@ -1,7 +1,7 @@
-REM update_my_areas_name_hierarchhy.sql
+REM update_my_areas_name_hierarchy.sql
 clear screen
-set echo on 
-spool update_my_areas_name_hierarchhy.lst
+set echo on pages 999
+spool update_my_areas_name_hierarchy.lst
 
 alter TRIGGER strava.my_areas_update_name disable;
 
@@ -29,15 +29,15 @@ from my_areas;
 
 truncate table my_area_hierarchy;
 insert into my_area_hierarchy
-select area_code, area_number
+select area_code, area_number --, name
 , strava_sdo.name_hierarchy_fn(area_code, area_number, 'A') name_hierarchy_fn
 from my_areas
-where name_hierarchy IS null
-or parent_area_code = 'UCTL'
-or area_code = 'UCTL'
+--where name_hierarchy IS null
+--or parent_area_code = 'UCTL'
+--or area_code = 'UCTL'
 --fetch first 10000 rows only
 ;
-select * from my_area_hierarchy;
+--select * from my_area_hierarchy;
 
 merge into my_areas u
 using (
@@ -53,5 +53,5 @@ alter TRIGGER strava.my_areas_update_name enable;
 spool off
 
 
-select * from my_areas
-where name like '%Kilruddery%';
+select * from my_areas where name like '%Kilruddery%';
+select * from my_areas where name like '%Ightham%';

@@ -43,6 +43,7 @@ CREATE TABLE my_areas
 )
 /
 
+alter table my_areas modify name not null;
 alter table my_areas add num_pts integer;
 alter table my_areas modify matchable default 1;
 Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);

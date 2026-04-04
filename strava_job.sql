@@ -276,10 +276,10 @@ BEGIN
   EXCEPTION WHEN e_job_already_exists THEN NULL;
   END;
 
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_ACTION'      , value => 'STRAVA.WEBHOOK_PKG.PROCESS_QUEUE');
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'       , value => FALSE);
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL' , value => 'FREQ=DAILY;BYHOUR=0;BYMINUTE=42');
-  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'       , value => k_job_class); 
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_ACTION'     , value => 'STRAVA.WEBHOOK_PKG.PROCESS_QUEUE');
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'      , value => FALSE);
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL', value => 'FREQ=MINUTELY;INTERVAL=1');
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'      , value => k_job_class); 
 
   DBMS_SCHEDULER.set_resource_constraint 
   (object_name   => k_job_name
@@ -720,7 +720,7 @@ spool off
 /*
 clear screen
 set serveroutput on echo on
-EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB');
+EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
 */
 
 

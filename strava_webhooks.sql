@@ -74,9 +74,9 @@ DECLARE
 BEGIN
   IF :new.processing_status = 0 THEN
     dbms_scheduler.set_attribute(name => k_job_name, 
-	                             attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '1' SECOND);
-    dbms_scheduler.enable(name => k_job_name);
-	dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
+	                             attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '20' SECOND);
+    --dbms_scheduler.enable(name => k_job_name);
+	--dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
   END IF;
 END;
 /
@@ -175,12 +175,6 @@ BEGIN
   ORDS.DEFINE_MODULE(
     p_module_name    => 'placecloud',
     p_base_path      => 'placecloud/'
-  );
-  commit;
-
-  ORDS.DEFINE_TEMPLATE(
-    p_module_name => 'placecloud',
-    p_pattern     => 'event'
   );
   commit;
 

@@ -5,11 +5,11 @@ spool create_api_log.lst
 
 CREATE TABLE api_log
 (request_time TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL
-,req_type    VARCHAR2(4 CHAR)
-,url         VARCHAR2(1000 CHAR)
-,http_status NUMBER
-,short_usage NUMBER
-,long_usage  NUMBER
+,req_type     VARCHAR2(4 CHAR)
+,url          VARCHAR2(1000 CHAR)
+,http_status  NUMBER
+,short_usage  NUMBER
+,long_usage   NUMBER
 );
 
 ALTER TABLE api_log ADD req_type VARCHAR2(4);

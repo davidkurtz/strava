@@ -316,15 +316,16 @@ BEGIN
 	  END IF;
 	END LOOP;    
 
-    p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
-    p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
-	
     IF p_activities.description IS NULL THEN 
 	  p_activities.description := l_placecloud_rep;
 	ELSE 
+      p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
+      p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
       p_activities.description := p_activities.description||k_lf||l_placecloud_rep;
 	END IF;
-    --DBMS_LOB.writeappend(p_activities.description,LENGTH(l_placecloud_rep),l_placecloud_rep);
+	
+	p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
+    p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
   END IF;
   
   --strava_http.print_clob(p_activities.description);

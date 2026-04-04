@@ -104,7 +104,9 @@ PROCEDURE process_queue IS
   l_value      VARCHAR2(4000);
   l_column     VARCHAR2(128 CHAR);
   l_sql        CLOB;
+  l_counter    INTEGER := 0;
 
+  k_job_name  CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB';
   k_action CONSTANT VARCHAR2(64 CHAR) := 'process_queue';  
   l_module VARCHAR2(64 CHAR);
   l_action VARCHAR2(64 CHAR);  
@@ -141,6 +143,7 @@ BEGIN
     FOR UPDATE OF h.processing_status 
     --SKIP LOCKED
   ) LOOP
+    l_counter := l_counter + 1;
     l_processing_status := NULL;  
 	l_status_msg := 'ID '||i.id||': '||INITCAP(i.object_type)||' '||i.object_id;
 	
@@ -257,6 +260,12 @@ BEGIN
 	  
 	END;
   END LOOP;
+  
+  --set next job start time to next midnight
+  IF l_counter = 0 THEN
+    dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE', value => TRUNC(SYSTIMESTAMP) + INTERVAL '1' DAY);
+  END IF;
+  
   COMMIT;
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 END process_queue;

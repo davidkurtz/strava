@@ -61,9 +61,112 @@ DROP INDEX stage_geo_data_sidx
 
 INSERT INTO my_area_codes VALUES ('USER','User Defined Areas',9);
 COMMIT;
+
+delete from stage_my_areas;
 ----------------------------------------------------------------------------------------------------
---create a user point - Sally Gap
-/*----------------------------------------------------------------------------------------------------
+--France, Col du Galibier
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+VALUES (
+  'USER',2507301,'FRA2507301','Col du Galibier',
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+	  6.4090000,45.0644500,
+	  6.4070000,45.0644500,
+	  6.4070000,45.0636000,
+	  6.4090000,45.0636000,
+	  6.4090000,45.0644500
+    )
+  )
+);
+/*
+----------------------------------------------------------------------------------------------------
+--France, Col de la Bonette
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+VALUES (
+  'USER',2500401,'FRA2500401','Col de la Cime de la Bonette',
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+	  6.8085000,44.3270000,
+	  6.8065000,44.3270000,
+	  6.8065000,44.3260000,
+	  6.8085000,44.3260000,
+	  6.8085000,44.3270000
+    )
+  )
+);
+----------------------------------------------------------------------------------------------------
+--France, Col de la Cime de la Bonette
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+VALUES (
+  'USER',2500402,'FRA2500402','Col de la Cime de la Bonette',
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+	  6.8098000,44.3218000,
+	  6.8040000,44.3218000,
+	  6.8040000,44.3200000,
+	  6.8098000,44.3200000,
+	  6.8098000,44.3218000
+    )
+  )
+);
+----------------------------------------------------------------------------------------------------
+--France, Mt. Ventoux
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+VALUES (
+  'USER',2502601,'FRA2502601','Mont Ventoux',
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+	  5.2798080,44.1746000,
+	  5.2768200,44.1746000,
+	  5.2768200,44.1728000,
+	  5.2798080,44.1728000,
+	  5.2798080,44.1746000
+    )
+  )
+);
+----------------------------------------------------------------------------------------------------
+-- Ireland, Glencree, Wicklow
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+VALUES (
+  'USER',250003,'IRL25003','Glencree',
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+	  -6.29115200,53.19850000,    -- lon, lat
+	  -6.29115200,53.20079000,
+	  -6.29366400,53.20079000,
+	  -6.29366400,53.19850000,
+	  -6.29115200,53.19850000
+                      )
+    )
+);
+----------------------------------------------------------------------------------------------------
+--Ireland, Sally Gap
+----------------------------------------------------------------------------------------------------
 delete from stage_my_areas;
 INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
 VALUES (
@@ -83,7 +186,7 @@ VALUES (
   )
 );
 ----------------------------------------------------------------------------------------------------
--- Wicklow Gap
+-- Ireland, Wicklow Gap
 ----------------------------------------------------------------------------------------------------
 INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
 VALUES (
@@ -98,26 +201,6 @@ VALUES (
 	  -6.3974390,53.0422290,
 	  -6.3988340,53.0417380,
 	  -6.3971760,53.0412810
-    )
-  )
-);
-----------------------------------------------------------------------------------------------------
--- Glencree, Wicklow, Ireland
-----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
-VALUES (
-  'USER',250003,'IRL25003','Glencree',
-  SDO_GEOMETRY(
-    2003,              -- 2003 = polygon / 2D line type
-    4326,              -- SRID (WGS84)
-    NULL, 
-    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
-    SDO_ORDINATE_ARRAY(
-	  -6.29115200,53.19850000,    -- lon, lat
-	  -6.29115200,53.20079000,
-	  -6.29366400,53.20079000,
-	  -6.29366400,53.19850000,
-	  -6.29115200,53.19850000
     )
   )
 );
@@ -139,13 +222,12 @@ VALUES (
 	  10.45239700,46.53002200,
 	  10.45127000,46.52906300,
       10.45334600,46.52799600
+                      )
     )
-  )
 );
 ----------------------------------------------------------------------------------------------------
--- Swains Lane, London
+-- UK, Swains Lane, London
 ----------------------------------------------------------------------------------------------------
-*/
 delete from stage_my_areas;
 INSERT INTO stage_my_areas (area_code, area_number, uqid, name, parent_area_code, parent_area_number, geom)
 VALUES (
@@ -155,7 +237,7 @@ VALUES (
     4326,
     NULL,
     SDO_ELEM_INFO_ARRAY(1,1003,1), -- one polygon (exterior polygon ring counter-clockwise)
-    SDO_ORDINATE_ARRAY(-0.14770468632509, 51.569613039632 /*Swains World*/
+    SDO_ORDINATE_ARRAY(-0.14770468632509, 51.569613039632 --Swains World
                       ,-0.14832964102552, 51.569407978151 
                       ,-0.14674177328872, 51.567090552402 
                       ,-0.14592101733016, 51.567080548869 
@@ -166,6 +248,7 @@ VALUES (
 update stage_my_areas
 set name = 'Swain''s Lane'
 where name = 'Swains Lane';
+*/
 ----------------------------------------------------------------------------------------------------
 */
 UPDATE stage_my_areas
@@ -199,7 +282,7 @@ BEGIN
   l_pad := lpad('.',p_level,'.');
   l_t0 := SYSTIMESTAMP;
   
-  IF p_level >4 then
+  IF p_level >6 then
     RAISE_APPLICATION_ERROR(-20000,'Recurrsion level '||p_level);
   ELSE
     dbms_output.put_line('Searching '||p_searchfor_area_code||'-'||p_searchfor_area_number
@@ -361,7 +444,7 @@ WHEN MATCHED THEN UPDATE
 SET u.num_children = s.child_count
 /
 ----------------------------------------------------------------------------------------------------
--- mark all acitivities potentially affected by  sew user area 
+-- mark all acitivities potentially affected by  ew user area 
 ----------------------------------------------------------------------------------------------------
 update activities a
 set processing_status = 3

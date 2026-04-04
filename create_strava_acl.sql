@@ -14,35 +14,32 @@ column description format a40
 clear screen
 spool create_strava_acl.lst
 ----------------------------------------------------------------------------------------------------
-exec DBMS_NETWORK_ACL_ADMIN.drop_acl(acl => 'strava_acl.xml');
+BEGIN
+  FOR i IN(SELECT * FROM dba_host_acls where host = 'www.strava.com') LOOP
+    DBMS_NETWORK_ACL_ADMIN.drop_acl(acl => i.acl);
+  END LOOP;
+END;
+/
+
+select * FROM dba_host_acls;
 select * FROM dba_network_acls;
+select * FROM dba_host_aces;
+select * FROM dba_network_acl_privileges;
+
 
 BEGIN
-  DBMS_NETWORK_ACL_ADMIN.create_acl (
-    acl          => 'strava_acl.xml',
-    description  => 'Allow access to Strava API',
-    principal    => 'STRAVA',   -- your DB user
-    is_grant     => TRUE,
-    privilege    => 'connect'
-  );
+  DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
+    host => 'www.strava.com',
+    upper_port => 443,
+    lower_port => 443,
+    ace  => xs$ace_type(
+              privilege_list => xs$name_list('connect','http'),
+              principal_name => 'STRAVA',
+              principal_type => xs_acl.ptype_db));
 END;
 /
-BEGIN
-  DBMS_NETWORK_ACL_ADMIN.add_privilege (
-    acl          => 'strava_acl.xml',
-    principal    => 'STRAVA',   -- your DB user
-    is_grant     => TRUE,
-    privilege    => 'http'
-  );
-END;
-/
-BEGIN
-  DBMS_NETWORK_ACL_ADMIN.assign_acl (
-    acl  => 'strava_acl.xml',
-    host => 'www.strava.com'
-  );
-END;
-/
+
+
 select * FROM dba_network_acls;
 ----------------------------------------------------------------------------------------------------
 BEGIN
