@@ -13,7 +13,7 @@ FUNCTION clean_clob(p_clob IN CLOB) RETURN CLOB;
 FUNCTION clean_string(p_clob IN CLOB) RETURN CLOB;
 --PROCEDURE api_log_usage;;
 
-FUNCTION http_request 
+FUNCTION http_request
 (p_url IN VARCHAR2
 ,p_redirect IN NUMBER DEFAULT NULL
 ) RETURN CLOB;
@@ -22,6 +22,11 @@ FUNCTION strava_http_request
 (p_url VARCHAR2
 ,p_req_type VARCHAR2 DEFAULT 'GET'
 ,p_put_body CLOB     DEFAULT NULL --e.g. 'description=Updated from PL/SQL'
+) RETURN CLOB;
+
+FUNCTION normalize_to_utf8
+(p_text       CLOB
+,p_src_charset VARCHAR2 DEFAULT 'WE8MSWIN1252'  -- only used if conversion is needed
 ) RETURN CLOB;
 ----------------------------------------------------------------------------------------------------
 PROCEDURE batch_load_activities
@@ -152,6 +157,14 @@ e_json_syntax_error EXCEPTION; --ORA-40441: JSON syntax error
 PRAGMA EXCEPTION_INIT(e_json_syntax_error,-40441);
 e_dv_insert EXCEPTION; --ORA-42692: Cannot insert into JSON Relational Duality View
 PRAGMA EXCEPTION_INIT(e_dv_insert,-42692);
+----------------------------------------------------------------------------------------------------
+FUNCTION activity_desc(p_activities IN activities%ROWTYPE) 
+RETURN VARCHAR2 IS
+BEGIN
+  RETURN p_activities.activity_id
+         ||' ('||regexp_replace(LTRIM(TO_CHAR(p_activities.start_date_utc,k_display_date),'0'),' {2,}',' ')
+               ||' - '||RTRIM(p_activities.name)||')';
+END activity_desc;
 ----------------------------------------------------------------------------------------------------
 FUNCTION booltochar(p_boolean BOOLEAN)
 RETURN VARCHAR2 IS
@@ -454,12 +467,16 @@ BEGIN
 
   dbms_output.put_line('URL:'||p_url);
   l_req := UTL_HTTP.begin_request(p_url/*, 'GET', 'HTTP/1.1'*/);
+  
+  -- Force server to return UTF-8 JSON if it supports it
+  UTL_HTTP.set_header(l_req, 'Accept', 'application/json');
+  UTL_HTTP.set_header(l_req, 'Accept-Charset', 'UTF-8');
    
   IF p_redirect >= 0 THEN --restrict http redirect - mainly for debug
     UTL_HTTP.set_follow_redirect(l_req, p_redirect);
   END IF;
 
-  --UTL_HTTP.set_body_charset('UTF-8');
+  UTL_HTTP.set_body_charset('UTF-8');
   l_resp := UTL_HTTP.get_response(l_req);
 
   IF l_resp.status_code IN(301,302,303,307,308) THEN
@@ -471,8 +488,11 @@ BEGIN
   LOOP
     DECLARE 
       l_buf VARCHAR2(32767);
+      --l_raw VARCHAR2(32767 CHAR);
     BEGIN
       UTL_HTTP.read_text(l_resp, l_buf, 32767);
+	  --UTL_HTTP.read_raw(l_resp, l_raw, 30000);
+	  --l_buf := UTL_I18N.raw_to_char(l_raw, 'AL32UTF8');
       DBMS_LOB.writeappend(l_clob, LENGTH(l_buf), l_buf);
     EXCEPTION 
       WHEN UTL_HTTP.end_of_body THEN EXIT; 
@@ -552,7 +572,7 @@ BEGIN
     UTL_HTTP.set_header(l_req, 'Content-Type', 'application/x-www-form-urlencoded');
     IF p_put_body IS NOT NULL THEN   -- Body
 	  l_header_body := escape_form_value(p_put_body);
-	  UTL_HTTP.set_header(l_req, 'Content-Length', LENGTH(l_header_body));
+	  UTL_HTTP.set_header(l_req, 'Content-Length', DBMS_LOB.GETLENGTH(l_header_body));
       --dbms_output.put_line('Body:'||l_header_body||'('||LENGTH(l_header_body)||')');
       UTL_HTTP.write_text(l_req, l_header_body);
 	END IF;
@@ -1641,28 +1661,24 @@ BEGIN
 	
 	IF dbms_lob.INSTR(r_activities.description,r_activities.area_list) > 0 THEN 
       r_activities.processing_status := k6_status_description_updated;
-	  dbms_output.put_line('Area List found in Description for activity '||p_activity_id||' ('
-	                     ||regexp_replace(TO_CHAR(r_activities.start_date_utc,k_display_date),' {2,}',' ')||' - '||r_activities.name
-						 ||'). No further Strava update');
-      dbms_output.put_line('Area List:'||r_activities.area_list); --qwert
-      dbms_output.put_line('Local description:'||r_activities.description); 
-	  dbms_output.put_line('Strava description:'||j_obj.get_string('description')); 
+	  dbms_output.put_line('Area List found in Description for activity '||activity_desc(r_activities)||'. No further Strava update');
+      --dbms_output.put_line('Area List:'||r_activities.area_list);
+      --dbms_output.put_line('Local description:'||r_activities.description); 
+	  --dbms_output.put_line('Strava description:'||j_obj.get_string('description')); 
 	  EXIT;
     ELSE
       strava_sdo.update_activity_description(r_activities);
       l_clob := strava_http_request(l_url,'PUT','description='||r_activities.description); 
-    --pretty_json(l_clob);
-    --print_clob(l_clob);
-    --Parse JSON array
+      --pretty_json(l_clob);
+      --print_clob(l_clob);
+      --Parse JSON array
 
       j_obj := JSON_OBJECT_T.parse(l_clob);
       --l_description := normalize_to_utf8(j_obj.get_string('description'));
       --l_description := j_obj.get_string('description');
 
 	  --r_activities.processing_status := k5_status_area_list_updated;
-      dbms_output.put_line('Warning: Updated description for activity '||p_activity_id||' ('
-	                     ||regexp_replace(TO_CHAR(r_activities.start_date_utc,k_display_date),' {2,}',' ')||' - '||r_activities.name
-						 ||') but still does not match');
+      dbms_output.put_line('Warning: Updated description for activity '||activity_desc(r_activities)||' but still does not match');
 	  EXIT WHEN l_counter >= 1;
 	  r_activities.description := clean_string(j_obj.get_string('description'));
     END IF;

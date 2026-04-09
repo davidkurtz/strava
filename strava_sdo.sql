@@ -298,7 +298,7 @@ BEGIN
   --dbms_output.put_line('New Placecloud report: '||l_placecloud_rep);
   p_activities.description := RTRIM(p_activities.description,k_lf||k_spc);
   p_activities.description := LTRIM(p_activities.description,k_lf||k_spc);
-	
+  
   IF p_activities.description IS NULL THEN
     p_activities.description := l_placecloud_rep;
   ELSE

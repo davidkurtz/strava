@@ -117,7 +117,7 @@ BEGIN
   AND    activity_id IN (
     SELECT activity_id
     FROM   activity_areas
-    WHERE  area_code = :new.area_code
+    WHERE  area_code = :new.area_code 
 	AND area_number = :new.area_number
   );
 END;

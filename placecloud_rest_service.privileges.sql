@@ -52,8 +52,9 @@ BEGIN
   l_modules.DELETE;
   l_patterns.DELETE;
 
-  l_roles(1)   := 'SODA Developer';
-  l_patterns(1):= '/soda/*';
+/*
+--l_roles(1)   := 'SODA Developer';
+--l_patterns(1):= '/soda/*';
 
   ORDS.DEFINE_PRIVILEGE(
       p_privilege_name => 'oracle.soda.privilege.developer',
@@ -63,7 +64,7 @@ BEGIN
       p_label          => '',
       p_description    => '',
       p_comments       => NULL);      
-
+*/
   COMMIT; 
 
 END;

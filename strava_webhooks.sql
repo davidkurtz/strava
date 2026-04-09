@@ -195,8 +195,8 @@ BEGIN
 	]'
   );
   commit;
-/**/
-/*parameters in traditional query string with explicit variables*/
+
+  /*parameters in traditional query string with explicit variables*/
   -- GET (verification)
   ORDS.DEFINE_HANDLER(
     p_module_name => 'placecloud',
@@ -222,7 +222,8 @@ BEGIN
  	p_items_per_page => 0
   );
   COMMIT;
-/*parameters in traditional query string*/
+
+  /*parameters in traditional query string*/
   ORDS.DEFINE_PARAMETER(
     p_module_name        => 'placecloud',
     p_pattern            => 'event',
@@ -254,6 +255,7 @@ BEGIN
 	p_access_method      => 'IN'
   );
   COMMIT;
+
 END;
 /
 show errors
@@ -272,6 +274,15 @@ select * from user_ords_modules;
 select * from user_ords_templates;
 select * from user_ords_handlers; 
 select * from user_ords_parameters;
+
+select * from DBA_ORDS_CLIENTS;
+select * from DBA_ORDS_CLIENT_PRIVILEGES;
+select * from DBA_ORDS_CLIENT_ROLES;
+select * from USER_ORDS_ENABLED_OBJECTS;
+select * from USER_ORDS_PRIVILEGE_MAPPINGS;
+select * from USER_ORDS_PRIVILEGE_MODULES;
+select * from dba_views where view_name like 'USER_ORDS%'
+/
 ----------------------------------------------------------------------------------------------------
 -- query to report on rest service setup
 ----------------------------------------------------------------------------------------------------
