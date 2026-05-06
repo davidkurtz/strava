@@ -44,18 +44,14 @@ select * FROM dba_network_acls;
 ----------------------------------------------------------------------------------------------------
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
-    host => 'data-osi.opendata.arcgis.com',
-	--host => '*.arcgis.com',
-	------------------------------------------------------------
+	host => '*.arcgis.com',
 	--host => 'data.gov.ie',
-	--host => 'data-sdublincoco.opendata.arcgis.com',
-    --host => 'hub.arcgis.com',
-	--host => 'tg-arcgisazurecdataprodeu1.az.arcgis.com',
+	--host => 'adresse.data.gouv.fr',
+	------------------------------------------------------------
+    --host => '*.data.gov.uk',
     --host => 'osm-boundaries.com',
     --host => 'simplemaps.com',
-    --host => '*.arcgis.com',
     --host => '*.opendatani.gov.uk',
-    --host => '*.data.gov.uk',
 	--host => '*.cloudflarestorage.com',
 	--host => 'labs.karavia.ch',
     ace  => xs$ace_type(

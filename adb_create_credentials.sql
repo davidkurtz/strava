@@ -2,6 +2,7 @@ REM adb_create_credentials.sql
 
 clear screen
 SET SERVEROUTPUT ON;
+spool adb_create_credentials.lst
 
 DECLARE
     l_bucket_uri VARCHAR2(4000);
@@ -44,3 +45,4 @@ BEGIN
 END;
 /
 
+spool off

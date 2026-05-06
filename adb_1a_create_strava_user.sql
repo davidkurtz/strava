@@ -13,16 +13,16 @@ GRANT EXECUTE ON dbms_scheduler TO strava;
 GRANT MANAGE SCHEDULER TO strava;
 --grant XDBADMIN to STRAVA;
 --grant alter session to STRAVA;
-alter user strava quota unlimited on users;
-alter user strava default tablespace users;
+--alter user strava quota unlimited on users;
+--alter user strava default tablespace users;
 
-GRANT CREATE ANY DIRECTORY TO strava;
+--GRANT CREATE ANY DIRECTORY TO strava;
 --CREATE OR REPLACE DIRECTORY strava as '/tmp/strava';
 --CREATE OR REPLACE DIRECTORY activities as '/tmp/strava/activities';
 --CREATE OR REPLACE DIRECTORY exec_dir AS '/usr/bin';
-DROP DIRECTORY strava;
-DROP DIRECTORY activities;
-DROP DIRECTORY exec_dir;
+--DROP DIRECTORY strava;
+--DROP DIRECTORY activities;
+--DROP DIRECTORY exec_dir;
 
 --GRANT READ, EXECUTE ON DIRECTORY exec_dir TO strava;
 --GRANT READ, EXECUTE ON DIRECTORY strava TO strava;

@@ -47,12 +47,24 @@ BEGIN
 END;
 /
 
-select name, townland_trim_suffix(name)
+select area_code, area_number, name, parent_area_code, parent_area_number, townland_trim_suffix(name)
 from my_areas
-where area_code = 'TOWN'
---and name like 'Kilruddery%'
+where 1=1
+--and area_code = 'TOWN'
+and name like 'Ballyduhig%'
 --and name like '%(%)%'
 order by 1
+/
+
+select s.area_code, s.area_number, s.name
+,      t.area_code, t.area_number, t.name
+,      sdo_geom.relate(s.geom,'DETERMINE',t.geom,1)
+from my_areas s, my_areas t
+where s.area_number < t.area_number
+and s.parent_area_code = t.parent_area_code
+and s.parent_area_number = t.parent_area_number
+and s.name like 'Farranarouga%'
+and t.name like 'Farranarouga%'
 /
 
 ----------------------------------------------------------------------------------------------------
@@ -69,20 +81,18 @@ DECLARE --first pass:two townlands where there is no UCTL
   
   l_s_parent_area_code   my_areas.parent_area_code%TYPE;
   l_s_parent_area_number my_areas.parent_area_number%TYPE;
-  l_s_parent_uqid        my_areas.parent_uqid%TYPE;
 
   l_t_parent_area_code   my_areas.parent_area_code%TYPE;
   l_t_parent_area_number my_areas.parent_area_number%TYPE;
-  l_t_parent_uqid        my_areas.parent_uqid%TYPE;
 BEGIN 
   FOR i IN (
     with x as (
     select /*MATERIALIZE*/
-         p.area_code p_area_code, p.area_number p_area_number, p.uqid p_uqid, p.name p_name, p.geom p_geom
+         p.area_code p_area_code, p.area_number p_area_number, p.name p_name, p.geom p_geom
 ,        strava.townland_trim_suffix(s.name) s_other_words
 --,        REGEXP_SUBSTR(s.name, '[^[:space:]]+$') s_last_word
-,        s.area_code s_area_code, s.area_number s_area_number, s.uqid s_uqid, s.area_level s_area_level, s.name s_name, s.geom s_geom
-,        t.area_code t_area_code, t.area_number t_area_number, t.uqid t_uqid, t.area_level t_area_level, t.name t_name, t.geom t_geom
+,        s.area_code s_area_code, s.area_number s_area_number, s.area_level s_area_level, s.name s_name, s.geom s_geom
+,        t.area_code t_area_code, t.area_number t_area_number, t.area_level t_area_level, t.name t_name, t.geom t_geom
 ,        strava.townland_trim_suffix(t.name) t_other_words
 ,        sdo_geom.relate(s.geom,'TOUCH',t.geom,1) touching
 --,        round(sdo_geom.sdo_area(s.geom, unit=>'unit=sq_km'),3) settlement_km_sq
@@ -91,13 +101,13 @@ BEGIN
     from   my_areas t, my_areas s, my_areas p
     where  t.area_code IN('TOWN')
     and    s.area_code IN('TOWN')
-    --and    p.area_code = 'CTY' --children of county
-    --and    p.area_number = 70000 --qwert
-	--and    p.area_code = 'CTY' --children of county
-	--and    p.parent_area_code = 'PROV'
+    and    p.area_code = 'CTY' --children of county
+    --and    p.area_number = 40000 --qwert
+    --and    s.name like 'Farranarouga%'
+    --and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
-    and    p.area_number = 35001 --qwert
-	and    p.area_code = 'SETL' --children of county
+    --and    p.area_number = 35001 --qwert
+	--and    p.area_code = 'SETL' --children of county
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -121,14 +131,14 @@ BEGIN
 	                          ||' -v- '||i.t_area_code||'-'||i.t_area_number||':'||i.t_name);
 
 
-    SELECT a.parent_area_code, a.parent_area_number, a.parent_uqid
-	INTO   l_s_parent_area_code, l_s_parent_area_number, l_s_parent_uqid
+    SELECT a.parent_area_code, a.parent_area_number
+	INTO   l_s_parent_area_code, l_s_parent_area_number
 	FROM   my_areas a
 	WHERE  area_code = i.s_area_code
 	AND    area_number = i.s_area_number;
 
-    SELECT a.parent_area_code, a.parent_area_number, a.parent_uqid
-	INTO   l_t_parent_area_code, l_t_parent_area_number, l_t_parent_uqid
+    SELECT a.parent_area_code, a.parent_area_number
+	INTO   l_t_parent_area_code, l_t_parent_area_number
 	FROM   my_areas a
 	WHERE  area_code = i.t_area_code
 	AND    area_number = i.t_area_number;
@@ -148,13 +158,13 @@ BEGIN
       BEGIN --insert/update union area
 	    dbms_output.put_line('Insert '||l_union_area_code||'-'||l_union_area_number||':'||i.s_other_words);
 	    INSERT INTO my_areas
-	    (area_code, area_number, uqid, area_level, name, geom, mbr, num_pts
-	    ,parent_area_code, parent_area_number, parent_uqid)
+	    (area_code, area_number, area_level, name, geom, mbr, num_pts
+	    ,parent_area_code, parent_area_number)
 	    VALUES
-	    (l_union_area_code, l_union_area_number, l_union_area_code||l_union_area_number
+	    (l_union_area_code, l_union_area_number
 		, l_union_area_level, i.s_other_words, l_union_geom
 	    ,sdo_geom.sdo_mbr(l_union_geom), SDO_UTIL.GETNUMVERTICES(l_union_geom)
- 	    ,i.p_area_code, i.p_area_number, i.p_uqid);
+ 	    ,i.p_area_code, i.p_area_number);
 	  EXCEPTION
 	    WHEN dup_val_on_index THEN
    	      dbms_output.put_line('Update already inserted area '||l_union_area_code||'-'||l_union_area_number||':'||i.s_other_words);
@@ -170,7 +180,6 @@ BEGIN
 	  UPDATE my_areas
 	  SET    parent_area_code = l_union_area_code
 	  ,      parent_area_number = l_union_area_number
-	  ,      parent_uqid = l_union_area_code||l_union_area_number
 	  ,      matchable = 0
 	  ,	     name_hierarchy = ''
 	  WHERE  area_code = i.s_area_code
@@ -180,7 +189,6 @@ BEGIN
       UPDATE my_areas
 	  SET    parent_area_code = l_union_area_code
 	  ,      parent_area_number = l_union_area_number
-	  ,      parent_uqid = l_union_area_code||l_union_area_number
 	  ,      matchable = 0
 	  ,     name_hierarchy = ''
 	  WHERE  area_code = i.t_area_code
@@ -205,20 +213,18 @@ DECLARE
   
   l_s_area_code   my_areas.parent_area_code%TYPE;
   l_s_area_number my_areas.parent_area_number%TYPE;
-  l_s_uqid        my_areas.parent_uqid%TYPE;
 
   l_t_area_code   my_areas.parent_area_code%TYPE;
   l_t_area_number my_areas.parent_area_number%TYPE;
-  l_t_uqid        my_areas.parent_uqid%TYPE;
 BEGIN 
   FOR i IN (
     with x as (
     select /*MATERIALIZE*/
-         p.area_code p_area_code, p.area_number p_area_number, p.uqid p_uqid, p.name p_name, p.geom p_geom
+         p.area_code p_area_code, p.area_number p_area_number, p.name p_name, p.geom p_geom
 ,        strava.townland_trim_suffix(s.name) s_other_words
 --,        REGEXP_SUBSTR(s.name, '[^[:space:]]+$') s_last_word
-,        s.area_code s_area_code, s.area_number s_area_number, s.uqid s_uqid, s.area_level s_area_level, s.name s_name, s.geom s_geom
-,        t.area_code t_area_code, t.area_number t_area_number, t.uqid t_uqid, t.area_level t_area_level, t.name t_name, t.geom t_geom
+,        s.area_code s_area_code, s.area_number s_area_number, s.area_level s_area_level, s.name s_name, s.geom s_geom
+,        t.area_code t_area_code, t.area_number t_area_number, t.area_level t_area_level, t.name t_name, t.geom t_geom
 ,        strava.townland_trim_suffix(t.name) t_other_words
 ,        sdo_geom.relate(s.geom,'TOUCH',t.geom,1) touching
 ,        sdo_geom.relate(s.geom,'OVERLAPBDYINTERSECT',t.geom,1) overlapping
@@ -231,8 +237,8 @@ BEGIN
     --and    p.area_code = 'CTY' --children of county
 	--and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
-    and    p.area_code = 'SETL' --children of county
-	and    p.parent_area_number IN(35001)
+    --and    p.area_code = 'SETL' --children of county
+	--and    p.parent_area_number IN(35001)
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -295,13 +301,13 @@ BEGIN
       BEGIN --insert/update union area
 	    dbms_output.put_line('Insert '||l_union_area_code||'-'||l_union_area_number||':'||i.s_other_words);
 	    INSERT INTO my_areas
-	    (area_code, area_number, uqid, area_level, name, geom, mbr, num_pts
-	    ,parent_area_code, parent_area_number, parent_uqid)
+	    (area_code, area_number, area_level, name, geom, mbr, num_pts
+	    ,parent_area_code, parent_area_number)
 	    VALUES
-	    (l_union_area_code, l_union_area_number, l_union_area_code||l_union_area_number
+	    (l_union_area_code, l_union_area_number
 		, l_union_area_level, i.s_other_words, l_union_geom
 	    ,sdo_geom.sdo_mbr(l_union_geom), SDO_UTIL.GETNUMVERTICES(l_union_geom)
- 	    ,i.p_area_code, i.p_area_number, i.p_uqid);
+ 	    ,i.p_area_code, i.p_area_number);
 	  EXCEPTION
 	    WHEN dup_val_on_index THEN
    	      dbms_output.put_line('Update already inserted area '||l_union_area_code||'-'||l_union_area_number||':'||i.s_other_words);
@@ -318,7 +324,6 @@ BEGIN
 	    UPDATE my_areas
 	    SET    parent_area_code = l_union_area_code
 	    ,      parent_area_number = l_union_area_number
-	    ,      parent_uqid = l_union_area_code||l_union_area_number
 	    ,      matchable = 0
 	    ,	     name_hierarchy = ''
 	    WHERE  parent_area_code = l_union_area_code
@@ -346,16 +351,15 @@ DECLARE
   
   l_t_area_code   my_areas.parent_area_code%TYPE;
   l_t_area_number my_areas.parent_area_number%TYPE;
-  l_t_uqid        my_areas.parent_uqid%TYPE;
 BEGIN 
   FOR i IN (
     with x as (
     select /*MATERIALIZE*/
-         p.area_code p_area_code, p.area_number p_area_number, p.uqid p_uqid, p.name p_name, p.geom p_geom
+         p.area_code p_area_code, p.area_number p_area_number, p.name p_name, p.geom p_geom
 --,        strava.townland_trim_suffix(u.name) u_other_words
 --,        REGEXP_SUBSTR(u.name, '[^[:space:]]+$') u_last_word
-,        u.area_code u_area_code, u.area_number u_area_number, u.uqid u_uqid, u.area_level u_area_level, u.name u_name, u.geom u_geom
-,        t.area_code t_area_code, t.area_number t_area_number, t.uqid t_uqid, t.area_level t_area_level, t.name t_name, t.geom t_geom
+,        u.area_code u_area_code, u.area_number u_area_number, u.area_level u_area_level, u.name u_name, u.geom u_geom
+,        t.area_code t_area_code, t.area_number t_area_number, t.area_level t_area_level, t.name t_name, t.geom t_geom
 ,        strava.townland_trim_suffix(t.name) t_other_words
 ,        sdo_geom.relate(u.geom,'TOUCH',t.geom,1) touching
 ,        sdo_geom.relate(u.geom,'OVERLAPBDYINTERSECT',t.geom,1) overlapping
@@ -424,7 +428,6 @@ BEGIN
       UPDATE my_areas
 	  SET    parent_area_code = l_union_area_code
 	  ,      parent_area_number = l_union_area_number
-	  ,      parent_uqid = l_union_area_code||l_union_area_number
 	  ,      matchable = 0
 	  ,	     name_hierarchy = ''
 	  WHERE  area_code = i.t_area_code
@@ -489,8 +492,8 @@ where not exists(
   where pa.activity_id = ca.activity_id
   and   pa.area_code = p.area_Code
   and   pa.area_number = p.area_number)
-and p.area_code = 'UCTL'
-and c.area_code = 'TOWN'
+--and p.area_code = 'UCTL'
+--and c.area_code = 'TOWN'
 /
 ----------------------------------------------------------------------------------------------------
 -- update null geometry lengths
@@ -512,24 +515,6 @@ SET    mbr = sdo_geom.sdo_mbr(geom)
 ,      num_pts = SDO_UTIL.GETNUMVERTICES(geom)
 where  area_code = 'UCTL'
 and    (num_pts IS NULL or mbr IS NULL)
-/
-----------------------------------------------------------------------------------------------------
--- correct parent uqid 
-----------------------------------------------------------------------------------------------------
-merge into my_areas u
-using (
-select c.area_level, c.area_code, c.area_number, c.name
-, c.parent_uqid, p.uqid uqid_of_parent
-from my_areas c
-  inner join my_areas p
-    on p.area_code = c.parent_area_code
-    and p.area_number = c.parent_area_number
-where (c.parent_uqid IS NULL or c.parent_uqid!= p.uqid)
-order by c.area_level
-) s
-ON (s.area_code = u.area_code AND s.area_number = u.area_number)
-WHEN MATCHED THEN UPDATE 
-SET u.parent_uqid = s.uqid_of_parent
 /
 ----------------------------------------------------------------------------------------------------
 --correct count of number of children

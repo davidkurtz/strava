@@ -1,13 +1,12 @@
-REM adb_datapump_export.sql
+REM adb_datapump_export_direct.sql
 clear screen
-set echo on serveroutput on 
+set echo on serveroutput on pages 999 lines 200 trimspool on
 
 ----------------------------------------------------------------------------------------------------
 --if you specify this, you dont need to specify a ccredential!!!
 ----------------------------------------------------------------------------------------------------
 ALTER DATABASE PROPERTY SET DEFAULT_CREDENTIAL = 'ADMIN.OBJECT_STORE_CRED';
-
-column object_name format a50
+column object_name format a60
 SELECT object_name, bytes/1024/1024 Mb
 FROM table(
   DBMS_CLOUD.LIST_objects
@@ -16,7 +15,6 @@ FROM table(
   ));
 
 ----------------------------------------------------------------------------------------------------
--- OCI BUcket : https://cloud.oracle.com/object-storage/buckets/lrp1qmpxv8ea/bucket-gofaster1/details?region=uk-london-1
 -- do the export
 ----------------------------------------------------------------------------------------------------
 clear screen
@@ -24,15 +22,13 @@ set serveroutput on echo on
 DECLARE
   h NUMBER;
   l_file_name VARCHAR2(100);
-  --l_urifile_name VARCHAR2(200);
+  l_urifile_name VARCHAR2(200);
   l_dir VARCHAR2(100) := 'DATA_PUMP_DIR';
 BEGIN
   l_file_name := 'export_strava_%T';
-  --l_urifile_name := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/'||l_file_name;
-
+  l_urifile_name := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/'||l_file_name;
   h := DBMS_DATAPUMP.OPEN
        (operation => 'EXPORT'
-       --,job_mode => 'FULL'
        ,job_mode => 'SCHEMA'
        );
 
@@ -46,15 +42,31 @@ BEGIN
        ,name   => 'ESTIMATE'
        ,value  => 'BLOCKS'
 	   );
-
+/* - not compatible with oci export
+  dbms_datapump.set_parameter
+       (handle => h
+       ,name   => 'CHECKSUM'
+       ,value  => 1
+	   );
+*/
   DBMS_DATAPUMP.ADD_FILE
        (handle    => h
-       ,filename  => l_file_name||'_%U.dmp'
-       ,directory => l_dir
-       ,filetype  => DBMS_DATAPUMP.KU$_FILE_TYPE_DUMP_FILE
+       ,filename  => l_urifile_name||'.dmp'
+       ,directory => 'OBJECT_STORE_CRED'
+       ,filetype  => DBMS_DATAPUMP.KU$_FILE_TYPE_URIDUMP_FILE
+       ,filesize  => '4G' --but this is ignored
        ,reusefile => 1
        );
-	   
+/*this didnt work - 
+  DBMS_DATAPUMP.ADD_FILE
+       (handle    => h
+	   ,filename  => l_urifile_name||'.log'
+       ,directory => 'OBJECT_STORE_CRED'
+       ,filetype  => DBMS_DATAPUMP.KU$_FILE_TYPE_LOG_FILE
+       ,reusefile => 1
+  );
+  );
+*/	   
   DBMS_DATAPUMP.ADD_FILE
        (handle    => h
 	   ,filename  => l_file_name||'.log'
@@ -79,7 +91,6 @@ column state format a12
 select * from dba_datapump_jobs
 /
 
---drop table sys_export_schema_01 purge;
 
 /*
 OWNER_NAME JOB_NAME             OPERATION JOB_MODE STATE        DEGREE ATTACHED_SESSIONS DATAPUMP_SESSIONS
@@ -132,8 +143,7 @@ DECLARE
   l_job_name VARCHAR2(100);
   l_job_state VARCHAR2(100);
   e_job_does_not_exists EXCEPTION;
-  PRAGMA EXCEPTION_INIT(e_job_does_not_exists,-31626
-  );
+  PRAGMA EXCEPTION_INIT(e_job_does_not_exists,-31626s);
 
 BEGIN
   FOR i IN (SELECT DISTINCT owner_name, job_name FROM dba_datapump_jobs) 
@@ -152,6 +162,38 @@ BEGIN
 	  WHEN e_job_does_not_exists THEN 
 	    dbms_output.put_line('Datapump Job: '||l_job_name||' does not exist');
 	END;
+  END LOOP;
+END;
+/
+
+
+
+----------------------------------------------------------------------------------------------------
+-- copy the files to OCI bucket and delete from DATA_PUMP_DIR
+----------------------------------------------------------------------------------------------------
+clear screen
+DECLARE 
+  l_counter INTEGER := 0;
+  l_filename VARCHAR2(100);
+  l_dir VARCHAR2(100) := 'DATA_PUMP_DIR';
+  l_uri VARCHAR2(200) := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/';
+
+BEGIN
+  FOR i IN (
+    SELECT * FROM TABLE(DBMS_CLOUD.LIST_FILES('DATA_PUMP_DIR'))
+    WHERE regexp_like(object_name,'export_strava.+\.(log|dmp)')
+  ) LOOP
+    l_counter := l_counter + 1;
+    l_filename := REPLACE(i.object_name,'%T',TO_CHAR(i.created,'YYYYMMDD'));
+	l_filename := REPLACE(l_filename,'%U',l_counter);
+	dbms_output.put_line(l_filename);
+    DBMS_CLOUD.PUT_OBJECT
+    (object_uri      => l_uri||l_filename
+    ,directory_name  => l_dir
+    ,file_name       => i.object_name
+    ,credential_name => 'OBJECT_STORE_CRED'
+    );
+	UTL_FILE.FREMOVE('DATA_PUMP_DIR',i.object_name);
   END LOOP;
 END;
 /
@@ -358,42 +400,6 @@ Job "ADMIN"."SYS_EXPORT_SCHEMA_01" successfully completed at Wed Mar 11 20:10:17
 PL/SQL procedure successfully completed.
 
 */
-
-----------------------------------------------------------------------------------------------------
--- copy the files to OCI bucket and delete from DATA_PUMP_DIR
-----------------------------------------------------------------------------------------------------
-DECLARE 
-  l_counter INTEGER := 0;
-  l_filename VARCHAR2(100);
-  l_dir VARCHAR2(100) := 'DATA_PUMP_DIR';
-  l_uri VARCHAR2(200) := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/';
-BEGIN
-  FOR i IN (
-    SELECT * FROM TABLE(DBMS_CLOUD.LIST_FILES('DATA_PUMP_DIR'))
-    WHERE regexp_like(object_name,'export_strava.+\.(log|dmp)')
-  ) LOOP
-    l_counter := l_counter + 1;
-    l_filename := REPLACE(i.object_name,'%T',TO_CHAR(i.created,'YYYYMMDD'));
-	l_filename := REPLACE(l_filename,'%U',l_counter);
-	dbms_output.put_line(l_filename);
-    DBMS_CLOUD.PUT_OBJECT
-    (credential_name => 'OBJECT_STORE_CRED'
-    ,object_uri      => l_uri||l_filename
-    ,directory_name  => l_dir
-    ,file_name       => i.object_name
-    );
-	UTL_FILE.FREMOVE('DATA_PUMP_DIR',i.object_name);
-  END LOOP;
-END;
-/
-
-/*
-export_strava_20260311_01.dmp
-export_strava_20260311.log
-
-PL/SQL procedure successfully completed.
-*/
-
 
 ----------------------------------------------------------------------------------------------------
 -- empty DATA_PUMP_DIR
