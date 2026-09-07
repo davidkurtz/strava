@@ -14,7 +14,7 @@ CREATE TABLE strava.webhook_events
 );
 
 ALTER TABLE strava.webhook_events ADD processing_status NUMBER DEFAULT 0;
-UPDATE strava.webhook_events SET processing_status = 0;
+UPDATE strava.webhook_events SET processing_status = 0 WHERE processing_status IS NULL;
 ALTER TABLE strava.webhook_events MODIFY processing_status NOT NULL;
 
 ALTER TABLE strava.webhook_events ADD status_msg CLOB;
@@ -379,6 +379,19 @@ ORDER BY 1 desc,2
 FETCH FIRST 50 ROWS ONLY
 /
 
+----------------------------------------------------------------------------------------------------
+--what is in the queue
+----------------------------------------------------------------------------------------------------
+select *
+from webhook_events
+order by received_at desc
+/
+select processing_status, count(*)
+, min(event_timestamp), max(event_timestamp)
+, max(last_updated)
+from webhook_events
+group by processing_status
+/
 
 ----------------------------------------------------------------------------------------------------
 --reprocess messages that have errored
@@ -401,3 +414,10 @@ BEGIN
 END;
 /
 
+----------------------------------------------------------------------------------------------------
+-- check status of activities
+----------------------------------------------------------------------------------------------------
+select processing_status, count(*)
+from activities
+group by processing_status
+/

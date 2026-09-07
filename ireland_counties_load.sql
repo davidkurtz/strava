@@ -1,9 +1,8 @@
 REM ireland_counties_load.sql
 REM load Ireland: Counties - National Statutory Boundaries - 2019
-REM https://data.gov.ie/dataset/counties-national-statutory-boundaries-20191
 REM https://data-osi.opendata.arcgis.com/api/download/v1/items/e6f6418eb62442c4adbe18d0a64135a2/geojson?layers=0
-REM https://services-eu1.arcgis.com/FH5XCsx8rYXqnjF5/arcgis/rest/services/Province_Boundaries_Ungeneralised/FeatureServer/replicafilescache/Province_Boundaries_Ungeneralised_-1998524587992549972.geojson
-REM https://stg-arcgisazurecdataprodeu1.az.arcgis.com/exportfiles-2209-745/Province_Boundaries_Ungeneralised_-1998524587992549972.geojson?sv=2025-05-05&st=2026-03-26T21%3A44%3A49Z&se=2026-03-26T22%3A49%3A49Z&sr=c&sp=r&sig=a0IMIZehMwFFvG1klphLt69o8ZrdllLMKs8GwJB28xA%3D
+REM https://data.gov.ie/dataset/counties-national-statutory-boundaries-20191
+REM only 45511, 65011, 265011, 265001, 265002, 265003
 
 --DROP TABLE stage_geo_data PURGE;
 CREATE TABLE stage_geo_data (

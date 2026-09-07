@@ -36,7 +36,7 @@ BEGIN
 	IF l_last_word IN('Upper','Lower','Middle'
 	                 ,'North','South','East','West'
 					 ,'Big','Great','Little','Beg','More'
-					 ,'Demesne','Deerpark','Paddock','Mountain','Domain','Commons'
+					 ,'Demesne','Deerpark','Paddock','Mountain','Domain','Commons','Brakes'
 					 ) THEN
       l_name := l_other_words;
 	ELSE 
@@ -47,24 +47,44 @@ BEGIN
 END;
 /
 
-select area_code, area_number, name, parent_area_code, parent_area_number, townland_trim_suffix(name)
+select area_code, area_number, name, matchable, parent_area_code, parent_area_number, townland_trim_suffix(name)
 from my_areas
 where 1=1
 --and area_code = 'TOWN'
-and name like 'Ballyduhig%'
+and (name like 'Kindlestown%' or area_number = 15006)
 --and name like '%(%)%'
 order by 1
 /
 
-select s.area_code, s.area_number, s.name
+--non-siblings
+select s.parent_area_code, s.parent_area_number
+,      s.area_code, s.area_number, s.name
 ,      t.area_code, t.area_number, t.name
 ,      sdo_geom.relate(s.geom,'DETERMINE',t.geom,1)
 from my_areas s, my_areas t
-where s.area_number < t.area_number
-and s.parent_area_code = t.parent_area_code
-and s.parent_area_number = t.parent_area_number
-and s.name like 'Farranarouga%'
-and t.name like 'Farranarouga%'
+where (s.area_number != t.area_number OR s.area_Code != t.area_code)
+and strava.townland_trim_suffix(s.name) = strava.townland_trim_suffix(t.name)
+and s.rowid != t.rowid
+and s.name like 'Kindlestown%'
+and t.name like 'Kindlestown%'
+/
+
+
+
+--touching siblings
+select s.parent_area_code, s.parent_area_number
+,      s.area_code, s.area_number, s.name
+,      t.area_code, t.area_number, t.name
+,      sdo_geom.relate(s.geom,'DETERMINE',t.geom,1)
+from my_areas s, my_areas t
+where (s.area_number != t.area_number OR s.area_Code != t.area_code)
+--and s.parent_area_code = t.parent_area_code
+--and s.parent_area_number = t.parent_area_number
+--and strava.townland_trim_suffix(s.name) = strava.townland_trim_suffix(t.name)
+and s.rowid != t.rowid
+--and t.parent_area_code IN('CTY')
+and s.name like 'Greystones-Delgany'
+and t.name like 'Kindlestown%'
 /
 
 ----------------------------------------------------------------------------------------------------
@@ -102,12 +122,10 @@ BEGIN
     where  t.area_code IN('TOWN')
     and    s.area_code IN('TOWN')
     and    p.area_code = 'CTY' --children of county
-    --and    p.area_number = 40000 --qwert
-    --and    s.name like 'Farranarouga%'
+    and    p.area_number = 40000 --qwert
+    --and    s.name like 'Glassamucky%'
     --and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
-    --and    p.area_number = 35001 --qwert
-	--and    p.area_code = 'SETL' --children of county
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -121,15 +139,11 @@ BEGIN
 	)
 	select * from x
 	where s_other_words = t_other_words
-    --and    s_name like 'Ballinvally%' --'Kilruddery%'
-    --and    t_name like 'Ballinvally%' --'Kilruddery%'
-    --and    p_name = 'Wicklow'
 	ORDER BY s_area_number, t_area_number
 	FETCH FIRST 50 ROWS ONLY
   ) LOOP
     dbms_output.put_line('Considering '||i.s_area_code||'-'||i.s_area_number||':'||i.s_name
 	                          ||' -v- '||i.t_area_code||'-'||i.t_area_number||':'||i.t_name);
-
 
     SELECT a.parent_area_code, a.parent_area_number
 	INTO   l_s_parent_area_code, l_s_parent_area_number
@@ -237,8 +251,6 @@ BEGIN
     --and    p.area_code = 'CTY' --children of county
 	--and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
-    --and    p.area_code = 'SETL' --children of county
-	--and    p.parent_area_number IN(35001)
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -369,12 +381,10 @@ BEGIN
     from   my_areas t, my_areas u, my_areas p
     where  t.area_code IN('TOWN')
     and    u.area_code IN('UCTL')
-    --and    p.area_code = 'CTY' --children of county
-	--and    p.area_number = 250000 --Wicklow
 	--and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
     and    p.area_code = 'SETL' --children of county
-	and    p.area_number = 35001 --Wicklow
+	and    p.area_number = 260000
     and    p.area_code = u.parent_area_code
     and    p.area_number = u.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -477,6 +487,24 @@ from my_areas
 where area_code IN('TOWN','SETL','UCTL')
 group by area_code
 /
+----------------------------------------------------------------------------------------------------
+--one time manual fix
+----------------------------------------------------------------------------------------------------
+insert into activity_areas
+(activity_id, area_code, area_number)
+values 
+(14851476594, 'TOWN', 260324)
+/
+insert into activity_areas
+(activity_id, area_code, area_number)
+values 
+(8996569677, 'MUNC', 15803028)
+/
+update activities
+set processing_status = 3
+where activity_id IN(8996569677,14851476594)
+/
+
 ----------------------------------------------------------------------------------------------------
 -- insert missing activities of parents 
 ----------------------------------------------------------------------------------------------------

@@ -51,6 +51,10 @@ Alter table my_areas add constraint my_areas_check_parent_area_code CHECK (area_
 Alter table my_areas add constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid);
 Alter table my_areas add constraint my_areas_check_matchable CHECK (matchable IN(0,1));
 
+alter table my_areas drop column iso_code2;
+alter table my_areas drop column iso_code3;
+alter table my_areas drop column iso_number;
+
 alter table my_areas drop column name_heirarchy;
 alter table my_areas add name_heirarchy VARCHAR(4000) /*as (strava_pkg.name_heirarchy_fn(area_code,area_number))*/;
 

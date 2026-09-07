@@ -1,5 +1,6 @@
 REM adb_1a_create_strava_user.sql
-spool asb_1a_create_strava_user
+set echo on 
+spool adb_1a_create_strava_user
 
 purge dba_recyclebin;
 select * from dba_recyclebin;

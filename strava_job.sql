@@ -620,6 +620,8 @@ EXECUTE strava_job.create_renew_strava_tokens_job;
 EXECUTE strava_job.create_batch_load_activities_job;
 EXECUTE strava_job.create_update_strava_activity_job;
 EXECUTE strava_job.create_process_webhook_queue_job;
+
+set serveroutput on
 --EXECUTE dbms_Scheduler.run_job('STRAVA.CREATE_ACTIVITY_HSEARCH_UPD_ALL_JOB',FALSE) /*refresh all activity areas-can take time*/;
 --EXECUTE dbms_Scheduler.run_job('STRAVA.ACTIVITY_AREA_LIST_UPD_ALL_JOB',FALSE) /*this runs a job to create the update jobs*/; 
 --EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
