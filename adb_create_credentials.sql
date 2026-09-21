@@ -17,8 +17,8 @@ BEGIN
     -- 2️⃣ Create new credential with S3 keys
     DBMS_CLOUD.CREATE_CREDENTIAL(
         credential_name => 'OBJECT_STORE_CRED',
-        username        => '<ACCESS KEY>',   -- Replace with your Access Key
-        password        => '<SECRET KEY>'    -- Replace with your Secret Key
+        username        => 'info@go-faster.co.uk',   
+        password        => 'g[hvGyoe94jvh;ahk;U9'    -- Replace with your Secret Key
     );
 
     DBMS_OUTPUT.PUT_LINE('Credential OBJECT_STORE_CRED created successfully.');

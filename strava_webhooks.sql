@@ -68,18 +68,19 @@ show errors
 CREATE OR REPLACE TRIGGER strava.webhook_events_process_queue
 AFTER INSERT OR UPDATE ON strava.webhook_events
 FOR EACH ROW
+WHEN (new.processing_status = 0)
 DECLARE
   PRAGMA autonomous_transaction;
   k_job_name CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB';
 BEGIN
-  IF :new.processing_status = 0 THEN
-    dbms_scheduler.set_attribute(name => k_job_name, 
-	                             attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '20' SECOND);
-    --dbms_scheduler.enable(name => k_job_name);
-	--dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
-  END IF;
+  dbms_scheduler.set_attribute(name => k_job_name, 
+                               attribute => 'START_DATE', value => SYSTIMESTAMP + INTERVAL '20' SECOND);
+  --dbms_scheduler.enable(name => k_job_name);
+  --dbms_scheduler.run_job(job_name => 'STRAVA.PROCESS_WEBHOOK_QUEUE_JOB', use_current_session => FALSE);
 END;
 /
+
+
 show errors
 ALTER TRIGGER strava.webhook_events_process_queue ENABLE;
 ----------------------------------------------------------------------------------------------------

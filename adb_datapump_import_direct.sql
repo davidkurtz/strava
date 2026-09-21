@@ -10,6 +10,8 @@ set echo on serveroutput on pages 999 lines 200 trimspool on
 --if you specify this, you dont need to specify a ccredential!!!
 ALTER DATABASE PROPERTY SET DEFAULT_CREDENTIAL = 'ADMIN.OBJECT_STORE_CRED';
 column object_name format a60
+column mb format 99.99
+clear screen
 SELECT object_name, bytes/1024/1024 Mb
 FROM table(
   DBMS_CLOUD.LIST_objects
@@ -17,16 +19,13 @@ FROM table(
    location_uri => 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/'
   ));
 
-
-
-
 ----------------------------------------------------------------------------------------------------
 REM import data pump export  into schema 
 ----------------------------------------------------------------------------------------------------
 clear screen
 DECLARE
   h NUMBER;
-  l_file_name VARCHAR2(100) := 'export_strava_20260428_01.dmp';
+  l_file_name VARCHAR2(100) := 'export_strava_20260514.dmp';
   l_urifile_name VARCHAR2(200);
   l_dir VARCHAR2(100) := 'DATA_PUMP_DIR';
 BEGIN
@@ -35,11 +34,12 @@ BEGIN
   h := DBMS_DATAPUMP.OPEN
   (operation => 'IMPORT'
   ,job_mode  => 'SCHEMA'
+  --,job_mode  => 'TABLE'
   );
 
   DBMS_DATAPUMP.ADD_FILE
-       (handle    => h
-       ,filename  => l_urifile_name
+    (handle    => h
+    ,filename  => l_urifile_name
     ,filetype  => DBMS_DATAPUMP.KU$_FILE_TYPE_URIDUMP_FILE
     ,directory => 'OBJECT_STORE_CRED'
     --,credential_name => 'OBJECT_STORE_CRED'
@@ -52,23 +52,27 @@ BEGIN
   ,filetype  => DBMS_DATAPUMP.KU$_FILE_TYPE_LOG_FILE
   ,reusefile => 1
   );
- 
+
+  /* 
   DBMS_DATAPUMP.METADATA_FILTER
   (handle => h
   ,name   => 'SCHEMA_EXPR'
   ,value  => 'IN (''STRAVA'')'
   );
-  /* 
+  */
+   
+  /*
   DBMS_DATAPUMP.METADATA_FILTER
   (handle => h
   ,name   => 'NAME_EXPR'
-  ,value  => 'IN (''API_LOG'')'
+  ,value  => 'IN (''ACTIVITY_AREAS'')'
   );
   */
+  
   dbms_datapump.set_parameter
   (handle => h
   ,name   => 'TABLE_EXISTS_ACTION'
-  ,value  => 'TRUNCATE'
+  ,value  => 'REPLACE'
   );
 
   DBMS_DATAPUMP.START_JOB(h);
@@ -87,14 +91,12 @@ column state format a12
 select * from dba_datapump_jobs
 /
 
-select *
+select p.owner_name, p.job_name, p.inst_id, p.saddr, session_type, sid
 from dba_datapump_sessions p
   left outer join gv$session s on s.inst_id = p.inst_id and s.saddr = p.saddr
+order by 1,2
 /
 
-
-select * from strava.stage_geo_data
-/
 ----------------------------------------------------------------------------------------------------
 --list job status and stop it (in comments)
 ----------------------------------------------------------------------------------------------------
@@ -105,7 +107,11 @@ DECLARE
   job_state VARCHAR2(100);
   status ku$_Status;
 BEGIN
-  h := dbms_datapump.attach(job_name  => 'IMP_TABLE_JOB1', job_owner=>'ADMIN');
+  h := dbms_datapump.attach(
+       job_owner=>'ADMIN'
+      ,job_name  => 'SYS_IMPORT_SCHEMA_01'
+      --(job_name  => 'IMP_TABLE_JOB1'
+      );
   
   DBMS_DATAPUMP.get_status
   (handle=>h

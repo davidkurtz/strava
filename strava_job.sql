@@ -622,10 +622,12 @@ EXECUTE strava_job.create_update_strava_activity_job;
 EXECUTE strava_job.create_process_webhook_queue_job;
 
 set serveroutput on
---EXECUTE dbms_Scheduler.run_job('STRAVA.CREATE_ACTIVITY_HSEARCH_UPD_ALL_JOB',FALSE) /*refresh all activity areas-can take time*/;
---EXECUTE dbms_Scheduler.run_job('STRAVA.ACTIVITY_AREA_LIST_UPD_ALL_JOB',FALSE) /*this runs a job to create the update jobs*/; 
---EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
---execute STRAVA.STRAVA_SDO.ACTIVITY_AREA_LIST_UPD_ALL;
+/*
+EXECUTE dbms_Scheduler.run_job('STRAVA.CREATE_ACTIVITY_HSEARCH_UPD_ALL_JOB',FALSE) /*refresh all activity areas-can take time*/;
+EXECUTE dbms_Scheduler.run_job('STRAVA.ACTIVITY_AREA_LIST_UPD_ALL_JOB',FALSE) /*this runs a job to create the update jobs*/; 
+EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
+execute STRAVA.STRAVA_SDO.ACTIVITY_AREA_LIST_UPD_ALL;
+*/
 
 /*
 clear screen
@@ -692,14 +694,18 @@ ORDER BY 1,2
 select owner, job_name, argument_position, argument_Type
 ,      SYS.ANYDATA.accessNumber(anydata_value) anydata_value
 from   all_scheduler_job_args
-where owner = 'STRAVA' --AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
+where owner = 'STRAVA' 
+--AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
 / 
+
 select * from dba_scheduler_job_log 
-where owner = 'STRAVA' --AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
-ORDER BY 1 desc,2 FETCH FIRST 50 ROWS ONLY
+where owner = 'STRAVA' 
+--AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
+ORDER BY 2 desc FETCH FIRST 50 ROWS ONLY
 /
 select * from dba_scheduler_job_run_details
-where owner = 'STRAVA' --AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
+where owner = 'STRAVA'
+--AND job_name = 'RENEW_STRAVA_TOKENS_JOB'
 ORDER BY 1 desc,2 
 FETCH FIRST 50 ROWS ONLY
 /

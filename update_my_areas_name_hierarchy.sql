@@ -37,11 +37,17 @@ from my_areas
 --or area_code = 'UCTL'
 --fetch first 10000 rows only
 ;
---select * from my_area_hierarchy;
+select * from my_area_hierarchy
+--where name_hierarchy like '%D_n Laoghaire%'
+;
 
+--merge where there is a change
 merge into my_areas u
 using (
-select * from my_area_hierarchy
+select h.* 
+from my_area_hierarchy h
+  inner join my_areas a on h.area_code = a.area_code and h.area_number = A.area_number
+WHERE h.name_hierarchy != a.name_hierarchy
 ) s on (s.area_code = u.area_code and s.area_number = u.area_number)
 when matched then update
 set u.name_hierarchy = s.name_hierarchy;

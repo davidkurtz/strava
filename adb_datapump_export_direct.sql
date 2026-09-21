@@ -197,8 +197,8 @@ BEGIN
       -- Loop through each line
       LOOP
         BEGIN
-            UTL_FILE.GET_LINE(l_file, l_line);
-            DBMS_OUTPUT.PUT_LINE(l_line);
+          UTL_FILE.GET_LINE(l_file, l_line);
+          DBMS_OUTPUT.PUT_LINE(l_line);
         EXCEPTION
           WHEN NO_DATA_FOUND THEN EXIT;  -- exit loop at end of file
         END;

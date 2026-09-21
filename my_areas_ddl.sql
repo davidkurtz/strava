@@ -46,6 +46,8 @@ CREATE TABLE my_areas
 alter table my_areas modify name not null;
 alter table my_areas add num_pts integer;
 alter table my_areas modify matchable default 1;
+alter table my_areas modify name varchar2(70 char);
+alter table my_areas modify suffix varchar2(30 char);
 --Alter table my_areas add constraint my_areas_uq_iso_code3 unique (iso_code3);
 Alter table my_areas add constraint my_areas_check_parent_area_code CHECK (area_code != parent_area_code OR area_number != parent_area_number);
 Alter table my_areas add constraint my_areas_check_parent_uqid CHECK (uqid != parent_uqid);

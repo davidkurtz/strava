@@ -413,7 +413,7 @@ SET u.num_children = s.new_num_children
 
 
 ----------------------------------------------------------------------------------------------------
---mark activities from recalculation
+--mark activities for recalculation
 ----------------------------------------------------------------------------------------------------
 MERGE INTO activities u
 USING (

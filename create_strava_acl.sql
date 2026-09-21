@@ -23,15 +23,15 @@ END;
 
 select * FROM dba_host_acls;
 select * FROM dba_network_acls;
-select * FROM dba_host_aces;
+select * FROM dba_host_aces order by 1;
 select * FROM dba_network_acl_privileges;
 
 
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
     host => 'www.strava.com',
-    upper_port => 443,
-    lower_port => 443,
+    --upper_port => 443,
+    --lower_port => 443,
     ace  => xs$ace_type(
               privilege_list => xs$name_list('connect','http'),
               principal_name => 'STRAVA',
@@ -44,7 +44,10 @@ select * FROM dba_network_acls;
 ----------------------------------------------------------------------------------------------------
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
-	host => '*.arcgis.com',
+	host => 'raw.githubusercontent.com',
+	--host => 'hub.huwise.com',
+	--host => 'www.planning.data.gov.uk',
+    --host => '*.arcgis.com',
 	--host => 'data.gov.ie',
 	--host => 'adresse.data.gouv.fr',
 	------------------------------------------------------------
