@@ -32,9 +32,8 @@ insert into my_area_hierarchy
 select area_code, area_number --, name
 , strava_sdo.name_hierarchy_fn(area_code, area_number, 'A') name_hierarchy_fn
 from my_areas
---where name_hierarchy IS null
---or parent_area_code = 'UCTL'
---or area_code = 'UCTL'
+where name_hierarchy IS null
+and parent_area_number IS NOT NULL
 --fetch first 10000 rows only
 ;
 select * from my_area_hierarchy
@@ -47,7 +46,7 @@ using (
 select h.* 
 from my_area_hierarchy h
   inner join my_areas a on h.area_code = a.area_code and h.area_number = A.area_number
-WHERE h.name_hierarchy != a.name_hierarchy
+WHERE h.name_hierarchy != a.name_hierarchy OR a.name_hierarchy IS NULL
 ) s on (s.area_code = u.area_code and s.area_number = u.area_number)
 when matched then update
 set u.name_hierarchy = s.name_hierarchy;

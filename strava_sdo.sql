@@ -1,7 +1,7 @@
 REM strava_sdo.sql
+clear screen
 set echo on timi on 
 spool strava_sdo.lst
-clear screen
 rollback;
 
 --delete from user_sdo_geom_metadata where table_name = 'ACTIVITIES';
@@ -108,7 +108,7 @@ show errors
 CREATE OR REPLACE PACKAGE body strava_sdo as 
 ----------------------------------------------------------------------------------------------------
 k_module     CONSTANT VARCHAR2(64 CHAR) := $$PLSQL_UNIT;
-k_creator    CONSTANT VARCHAR2(64 CHAR) := 'GFCStavaPlaceCloud';
+k_creator    CONSTANT VARCHAR2(64 CHAR) := 'GFCStravaPlaceCloud';
 k_wgs84      CONSTANT INTEGER := 4326;
 k_geom_point CONSTANT INTEGER := 2001;
 k_geom_line  CONSTANT INTEGER := 2002;

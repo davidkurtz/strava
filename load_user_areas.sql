@@ -109,7 +109,7 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
 VALUES (
-  'USER',2500402,'FRA2500402','Col de la Cime de la Bonette',
+  'USER',2500402,'FRA2500402','Col de la Bonette',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -124,6 +124,10 @@ VALUES (
     )
   )
 );
+
+--update my_areas 
+--set name = 'Col de la Bonette'
+--where area_code = 'USER' and area_number = 2500402;
 ----------------------------------------------------------------------------------------------------
 --France, Mt. Ventoux
 ----------------------------------------------------------------------------------------------------
