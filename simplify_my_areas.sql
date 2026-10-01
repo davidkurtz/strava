@@ -18,6 +18,7 @@ BEGIN
     select a.*
     ,      sdo_util.simplify(geom,1,k_tolerance) new_geom
     from my_areas a
+    --where name_hierarchy like 'Spain%'
     --where a.area_code = 'SOVC' AND a.area_number = 1159320539 and a.name = 'Germany'
     order by last_updated desc, num_pts desc nulls first
     --fetch first 5000 rows only

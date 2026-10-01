@@ -1,15 +1,17 @@
-REM load_italy2.sql
-REM Regions        https://github.com/guglielmo/geojson-italy/edit/main/geojson/limits_IT_regions.geojson
-REM Provinces      https://github.com/guglielmo/geojson-italy/edit/main/geojson/limits_IT_provinces.geojson
-REM Cities         https://github.com/guglielmo/geojson-italy/edit/main/geojson/limits_IT_metropolitan_cities.geojson
-REM Municipalities https://github.com/guglielmo/geojson-italy/edit/main/geojson/limits_IT_municipalities.geojson
-REM Italy=380,ITA,IT
+REM load_portugal.sql
+REM Districts      https://hub.huwise.com/explore/assets/georef-portugal-distrito/ 15 DIS
+REM Municipalities https://hub.huwise.com/explore/assets/georef-portugal-concelho/ 308 MUNC
+REM Civil parishes https://hub.huwise.com/explore/assets/georef-portugal-freguesia/ 3259 CPAR
+REM 
+REM Portugal=620,PRT,PT
+REM SOVC 1159321187
+REM GEOU 1159321193
 ----------------------------------------------------------------------------------------------------
---italian area codes: SOVC, MUNC, REG, GEOS,  USER
+--portugal area codes: SOVC, GEOU
 ----------------------------------------------------------------------------------------------------
 SELECT area_code, count(*), sum(matchable)
 FROM   my_areas m
-START WITH area_code = 'SOVC' AND area_number = 380 and name = 'Italy'
+START WITH area_code = 'SOVC' AND area_number = 1159321187 and name = 'Portugal'
 CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
                AND prior m.area_number = m.parent_area_number
 group by area_code
@@ -38,12 +40,9 @@ CREATE TABLE stage_my_areas (
 	PARENT_AREA_CODE VARCHAR2(4 CHAR), 
 	PARENT_AREA_NUMBER NUMBER(*,0), 
 	NAME VARCHAR2(200 CHAR), 
-	REG_ID NUMBER,
-	REGION VARCHAR2(200 CHAR), 
-	PROV_ID NUMBER,
-	PROVINCE VARCHAR2(200 CHAR), 
-	MUNC_ID NUMBER,
-	MUNC VARCHAR2(200 CHAR), 
+	dis_ID NUMBER,
+	con_ID NUMBER,
+	fre_ID NUMBER,
 	MATCHABLE NUMBER(*,0) DEFAULT 1, 
 	SUFFIX VARCHAR2(30 CHAR),
 --
@@ -58,7 +57,7 @@ ALTER TABLE stage_my_areas MATCHABLE NUMBER(*,0) DEFAULT 1;
 ALTER TABLE stage_my_areas ADD SUFFIX VARCHAR2(20 CHAR);
 UPDATE stage_my_areas set MATCHABLE = 1;
 ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_pk PRIMARY KEY (area_code, area_number);
-ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_uk UNIQUE (MUNC_id)
+ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_uk UNIQUE (fre_id)
 alter table stage_my_areas
 add constraint stage_my_areas_rfk_area_code foreign key (parent_area_code, parent_area_number) references stage_my_areas (area_code, area_number);
 
@@ -103,7 +102,6 @@ INDEXTYPE IS MDSYS.SPATIAL_INDEX_V2
 
 ----------------------------------------------------------------------------------------------------
 --Load GeoJSON from URL
---https://github.com/guglielmo/geojson-italy
 ----------------------------------------------------------------------------------------------------
 clear screen
 set serveroutput on timi on echo on
@@ -122,15 +120,15 @@ BEGIN
   DBMS_LOB.freetemporary(l_clob);
 END load_geojson_url;
 BEGIN
-  load_geojson_url(1,'https://raw.githubusercontent.com/guglielmo/geojson-italy/refs/heads/main/geojson/limits_IT_regions.geojson');
-  load_geojson_url(2,'https://raw.githubusercontent.com/guglielmo/geojson-italy/refs/heads/main/geojson/limits_IT_provinces.geojson'); --load_geojson_url(3,'https://raw.githubusercontent.com/guglielmo/geojson-italy/refs/heads/main/geojson/limits_IT_metropolitan_cities.geojson');
-  load_geojson_url(4,'https://raw.githubusercontent.com/guglielmo/geojson-italy/refs/heads/main/geojson/limits_IT_municipalities.geojson');
+  load_geojson_url(1,'https://hub.huwise.com/api/explore/v2.1/catalog/datasets/georef-portugal-distrito/exports/geojson/?lang=en');
+  load_geojson_url(2,'https://hub.huwise.com/api/explore/v2.1/catalog/datasets/georef-portugal-concelho/exports/geojson/?lang=en');
+  load_geojson_url(3,'https://hub.huwise.com/api/explore/v2.1/catalog/datasets/georef-portugal-freguesia/exports/geojson/?lang=en');
 END;
 /
 
 
 --staging data loaded from web
-select * from stage_geo_data;
+select x.*, length(x.geo_json) from stage_geo_data x;
 delete from stage_geo_data where length(geo_json) < 1000;
 ----------------------------------------------------------------------------------------------------
 -- Load staged GeoJSON into stage areas
@@ -141,7 +139,7 @@ TRUNCATE TABLE stage_my_areas;
 
 DECLARE   
 PROCEDURE load_geojson(p_id NUMBER) IS
-  k_iso         CONSTANT INTEGER := '380'; --country isco code
+  k_iso         CONSTANT INTEGER := '620'; --country isco code
   l_clob        CLOB;
   j_root        JSON_OBJECT_T;
   j_crs         JSON_OBJECT_T;
@@ -158,16 +156,14 @@ PROCEDURE load_geojson(p_id NUMBER) IS
   l_area_number stage_my_areas.area_number%TYPE;
   l_area_level  stage_my_areas.area_level%TYPE;
   l_name        stage_my_areas.name%TYPE;
+  --l_local_name  stage_my_areas.name%TYPE;
   l_parent_area_code   stage_my_areas.parent_area_code%TYPE;
   l_parent_area_number stage_my_areas.parent_area_number%TYPE;
 
   l_srid        VARCHAR2(10 char) := '4326';
-  l_reg_id      stage_my_areas.reg_id%TYPE;
-  l_region      stage_my_areas.region%TYPE;
-  l_prov_id     stage_my_areas.prov_id%TYPE;
-  l_prov        stage_my_areas.province%TYPE;
-  l_munc_id     stage_my_areas.munc_id%TYPE;
-  l_munc        stage_my_areas.MUNC%TYPE;
+  l_dis_id     stage_my_areas.dis_ID%TYPE;
+  l_con_id     stage_my_areas.con_id%TYPE;
+  l_fre_id     stage_my_areas.fre_id%TYPE;
   l_suffix      stage_my_areas.suffix%TYPE;
   l_num_pts     stage_my_areas.num_pts%TYPE;
   
@@ -194,66 +190,45 @@ BEGIN
       l_clob := j_properties.to_clob;
 
 	  IF p_id = 1 THEN
---"properties":{"reg_name":"Sardegna","reg_istat_code_num":20,"reg_iso_3166_2":"IT-88","reg_istat_code":"20"}}]}
-	    l_reg_id      := j_properties.get_string('reg_istat_code_num');
-		l_region      := j_properties.get_string('reg_name');
-		l_suffix      := j_properties.get_string('prov_tipo_uts');
+--"properties":{"geo_point_2d":{"lon":-7.620450962143221,"lat":39.19006294643952},"year":"2024","dis_code":"12","dis_name":"Portalegre","dis_name_upper":"PORTALEGRE","dis_name_lower":"portalegre","dis_area_code":"PRT","dis_type":"district"}}]}
+	    l_dis_id     := j_properties.get_string('dis_code');
+		l_suffix      := initcap(j_properties.get_string('dis_type'));
 		
 		l_area_level  := 5;
-		l_area_code   := 'REG';
-		l_area_number := k_iso*100+l_reg_id;
-		l_name        := l_region;
+		l_area_code   := 'DIS';
+		l_area_number := k_iso*1e2+l_dis_id;
+		l_name        := j_properties.get_string('dis_name');
+		--l_local_name  := j_properties.get_string('dis_name_local');
 	  ELSIF p_id = 2 THEN
---"properties":{"prov_name":"Sulcis Iglesiente","prov_istat_code_num":119,"prov_acr":"CI","prov_iso_3166_2":null,"prov_uts_code":"119","prov_tipo_uts":"Provincia","reg_name":"Sardegna","reg_istat_code":"20","reg_istat_code_num":20,"reg_iso_3166_2":"IT-88","prov_istat_code":"119"}}
---,"properties":{"prov_name":"Torino","prov_istat_code_num":1,"prov_acr":"TO","prov_iso_3166_2":"IT-TO","prov_uts_code":"201","prov_tipo_uts":"Città metropolitana","reg_name":"Piemonte","reg_istat_code":"01","reg_istat_code_num":1,"reg_iso_3166_2":"IT-21","prov_istat_code":"001"}},
-	    l_reg_id      := j_properties.get_string('reg_istat_code_num');
-		l_region      := j_properties.get_string('reg_name');
-	    l_prov_id     := j_properties.get_string('prov_istat_code_num');
-		l_prov        := j_properties.get_string('prov_name');
-		l_suffix      := j_properties.get_string('prov_tipo_uts');
+--"properties":{"geo_point_2d":{"lon":-8.483019498708265,"lat":41.10961341896829},"year":"2024","dis_code":"13","dis_name":"Porto","con_code":"1304","con_name":"Gondomar","con_name_upper":"GONDOMAR","con_name_lower":"gondomar","con_area_code":"PRT","con_type":"municipality"}}]}
+	    l_dis_id     := j_properties.get_string('dis_code');
+	    l_con_id     := j_properties.get_string('con_code');
+		l_suffix      := initcap(j_properties.get_string('con_type'));
 		
 		l_area_level  := 6;
-		l_area_code   := 'PROV';
-		l_area_number := k_iso*1000+l_prov_id;
-		l_name        := l_prov;
+		l_area_code   := 'MUNC';
+		l_area_number := k_iso*1e2+l_con_id;
+		l_name        := j_properties.get_string('con_name'); 
+		--l_local_name  := j_properties.get_string('con_name_local');
 	  ELSIF p_id = 3 THEN
---properties":{"prov_name":"Cagliari","prov_istat_code_num":118,"prov_acr":"CA","prov_iso_3166_2":"IT-CA","prov_uts_code":"318","prov_tipo_uts":"Città metropolitana","reg_name":"Sardegna","reg_istat_code":"20","reg_istat_code_num":20,"reg_iso_3166_2":"IT-88","prov_istat_code":"118"}}
---"properties":{"prov_name":"Torino","prov_istat_code_num":1,"prov_acr":"TO","prov_iso_3166_2":"IT-TO","prov_uts_code":"201","prov_tipo_uts":"Città metropolitana","reg_name":"Piemonte","reg_istat_code":"01","reg_istat_code_num":1,"reg_iso_3166_2":"IT-21","prov_istat_code":"001"}},
-	    l_reg_id      := j_properties.get_string('reg_istat_code_num');
-		l_region      := j_properties.get_string('reg_name');
-	    l_prov_id     := j_properties.get_string('prov_istat_code_num');
-		--l_prov        := j_properties.get_string('prov_name');
-	    --l_vwg_id      := j_properties.get_string('vwg_code');
-		--l_vwg         := initcap(j_properties.get_string('vwg_name_short');
-		l_suffix      := j_properties.get_string('prov_tipo_uts');
-		
-	    l_area_level  := 7;
-		l_area_code   := 'CITY';
-		--l_area_number := k_iso||l_vwg_id;
-		--l_name        := l_vwg;
-
-	  ELSIF p_id = 4 THEN
---"properties": {"name": "EPSG:4326"}}, "features": [{"type": "Feature", "properties": {"name": "Agli\u00e8", "op_id": "130", "minint_elettorale": "1010810010", "minint_finloc": "1010810010", "prov_name": "Torino", "prov_istat_code": "001", "prov_istat_code_num": 1, "prov_acr": "TO", "prov_iso_3166_2": "IT-TO", "reg_name": "Piemonte", "reg_istat_code": "01", "reg_istat_code_num": 1, "reg_iso_3166_2": "IT-21", "opdm_id": "1", "com_catasto_code": "A074", "com_istat_code": "001001", "com_istat_code_num": 1001, "prov_uts_code": "201", "prov_tipo_uts": "Citt\u00e0 metropolitana"},
---"properties": {"name": "Cortina d'Ampezzo", "op_id": "3451", "minint_elettorale": "1050100160", "minint_finloc": "2050100160", "prov_name": "Belluno", "prov_istat_code": "025", "prov_istat_code_num": 25, "prov_acr": "BL", "prov_iso_3166_2": "IT-BL", "reg_name": "Veneto", "reg_istat_code": "05", "reg_istat_code_num": 5, "reg_iso_3166_2": "IT-34", "opdm_id": "3311", "com_catasto_code": "A266", "com_istat_code": "025016", "com_istat_code_num": 25016, "prov_uts_code": "025", "prov_tipo_uts": "Provincia"}, 
-	    l_reg_id      := j_properties.get_string('reg_istat_code_num');
-		l_region      := j_properties.get_string('reg_name');
-	    l_prov_id     := j_properties.get_string('prov_istat_code_num');
-		--l_prov        := j_properties.get_string('prov_name');
-	    l_munc_id     := j_properties.get_string('com_istat_code_num');
-		l_munc        := j_properties.get_string('name');
-		l_suffix      := j_properties.get_string('prov_tipo_uts');
+--"properties":{"geo_point_2d":{"lon":-31.105852925315833,"lat":39.69992679852942},"year":"2024","dis_code":"20","dis_name":"A\u00e7ores","con_code":"4901","con_name":"Corvo","fre_code":"490101","fre_name":"Corvo","fre_name_upper":"CORVO","fre_name_lower":"corvo","fre_area_code":"PRT","fre_type":"parish","fre_name_long":"Corvo"}}]}
+	    l_dis_id     := j_properties.get_string('dis_code');
+	    l_con_id     := j_properties.get_string('con_code');
+	    l_fre_id     := j_properties.get_string('fre_code');
+		l_suffix      := initcap(j_properties.get_string('fre_type'));
 		
 		l_area_level  := 8;
-		l_area_code   := 'MUNC';
-		l_area_number := k_iso*1e6+l_munc_id;
-		l_name        := l_munc;
+		l_area_code   := 'CPAR';
+		l_area_number := k_iso*1e5+l_fre_id;
+		l_name        := j_properties.get_string('fre_name');
+		--l_local_name  := j_properties.get_string('fre_name_local');
 
 	  END IF;
 	END IF;
 
     j_geometry := j_feature.get_object('geometry');
 	IF j_geometry IS NULL THEN
-	  dbms_output.put_line(l_munc||': j_geometry is null');
+	  dbms_output.put_line(l_name||': j_geometry is null');
 	  l_geom := NULl;
 	  l_num_pts := NULL;
       l_area := NULL;
@@ -266,7 +241,7 @@ BEGIN
 	    l_geom := sdo_util.from_geojson(l_clob);
 	  EXCEPTION 
 	    WHEN e_json_syntax_error THEN
-		  dbms_output.put_line(sqlerrm||' during parse of '||l_area_number||':'||l_munc||'. Switch to own function.' );
+		  dbms_output.put_line(sqlerrm||' during parse of '||l_area_number||':'||l_name||'. Switch to own function.' );
     	  l_geom := strava_sdo.build_sdo_geometry_from_geojson(j_geometry, l_srid);
 	  END;
 
@@ -280,24 +255,33 @@ BEGIN
     
 	/*dbms_output.put_line(l_area_number
           --||':'||l_srid
-	      ||', '||l_reg_id||':'||l_region
-          ||', '||l_prov_id||':'||l_prov
-          ||', '||l_munc_id||':'||l_munc
+	      ||', '||l_dis_id --||':'||l_dis
+          ||', '||l_con_id --||':'||l_MUNC
+          ||', '||l_fre_id --||':'||l_CPAR
 		  --||' ('||l_suffix||')'
 		  --||', '||l_num_pts||' points'
           --||', '||l_area||' kmsq'
           );*/
 	--dbms_output.put_line(SDO_UTIL.TO_WKTGEOMETRY(l_geom));
 	
+	/*
+	IF l_local_name IS NULL THEN NULL;
+	ELSIF l_name = l_local_name THEN 
+	  l_local_name := '';
+	ELSE
+	  l_name := l_name||'/'||l_local_name;
+	END IF;
+	*/
+	
   	INSERT INTO stage_my_areas
 	(area_code, area_number, area_level, name
 	--,parent_area_code, parent_area_number
-	, reg_id, region, PROV_ID, province, MUNC_id, MUNC
+	, dis_ID, con_ID, fre_id
 	, geom, mbr, num_pts, area, suffix
 	) VALUES
   	(l_area_code, l_area_number, l_area_level, l_name
 	--,'CTY', TRUNC(l_area_number,-4)
-	, l_reg_id, l_region, l_prov_id, l_prov, l_munc_id, l_munc
+	, l_dis_id, l_con_id, l_fre_id
 	, l_geom, l_mbr, l_num_pts, l_area, l_suffix
 	);
 	
@@ -307,8 +291,7 @@ END load_geojson;
 BEGIN
   load_geojson(1);
   load_geojson(2);
-/*load_geojson(3); not loading metropolitean cities*/
-  load_geojson(4);
+  load_geojson(3);
 END;
 /
 
@@ -319,30 +302,22 @@ SET    mbr = sdo_geom.sdo_mbr(geom)
 where area IS NULL
 /
 ----------------------------------------------------------------------------------------------------
--- set parents of Regions to Sovereignity of Italy
+-- set parents of Regions to Sovereignity of portugal
 ----------------------------------------------------------------------------------------------------
 UPDATE stage_my_areas
 SET    parent_area_code = 'SOVC'
-,      parent_area_number = 380 
-WHERE  area_code = 'REG'
+,      parent_area_number = 1159321187 
+WHERE  area_code = 'DIS'
+And    area_number IN(62020 --Açores
+                     ,62030 --Madeira
+                     )
+;
+UPDATE stage_my_areas
+SET    parent_area_code = 'GEOU'
+,      parent_area_number = 1159321193 --Mainland portugal
+WHERE  area_code = 'DIS'
 AND    (parent_area_code IS NULL OR parent_area_code != 'SOVC')
 /
-----------------------------------------------------------------------------------------------------
--- set parents of prov
-----------------------------------------------------------------------------------------------------
-UPDATE stage_my_areas c
-SET   (c.parent_area_code, c.parent_area_number) 
-    = (select p.area_code, p.area_number
-	   from   stage_my_areas p
-	   where  p.reg_id = c.reg_id
-	   AND    p.prov_id IS NULL
-	   AND    p.munc_id IS null)
-WHERE c.reg_id IS NOT NULL
-AND   c.prov_id IS NOT NULL
-AND   c.munc_id IS NULL
---AND   c.parent_area_code IS NULL
---AND   c.parent_area_number IS NULL
-;
 ----------------------------------------------------------------------------------------------------
 -- set parents of MUNC
 ----------------------------------------------------------------------------------------------------
@@ -350,15 +325,36 @@ UPDATE stage_my_areas c
 SET   (c.parent_area_code, c.parent_area_number) 
     = (select p.area_code, p.area_number
 	   from   stage_my_areas p
-	   where  p.reg_id = c.reg_id
-	   AND    p.prov_id = c.prov_id
-	   AND    p.munc_id IS NULL)
-WHERE c.reg_id IS NOT NULL
-AND   c.prov_id IS NOT NULL
-AND   c.munc_id IS NOT NULL
+	   where  p.dis_ID = c.dis_ID
+	   AND    p.con_id IS NULL
+	   AND    p.fre_id IS null)
+WHERE c.dis_ID IS NOT NULL
+AND   c.con_id IS NOT NULL
+AND   c.fre_id IS NULL
 --AND   c.parent_area_code IS NULL
 --AND   c.parent_area_number IS NULL
 ;
+----------------------------------------------------------------------------------------------------
+-- set parents of CPAR
+----------------------------------------------------------------------------------------------------
+UPDATE stage_my_areas c
+SET   (c.parent_area_code, c.parent_area_number) 
+    = (select p.area_code, p.area_number
+	   from   stage_my_areas p
+	   where  p.dis_ID = c.dis_ID
+	   AND    p.con_id = c.con_id
+	   AND    p.fre_id IS NULL)
+WHERE c.dis_ID IS NOT NULL
+AND   c.con_id IS NOT NULL
+AND   c.fre_id IS NOT NULL
+--AND   c.parent_area_code IS NULL
+--AND   c.parent_area_number IS NULL
+;
+----------------------------------------------------------------------------------------------------
+-- Add a new area code for autonomous commune
+----------------------------------------------------------------------------------------------------
+INSERT INTO my_area_codes (area_code, description, area_level)
+VALUES ('CPAR','Civil Parish',8);
 ----------------------------------------------------------------------------------------------------
 -- summary of numbers of areas
 ----------------------------------------------------------------------------------------------------
@@ -395,22 +391,19 @@ from x
 where NVL(i_area/c_area,0) < .9 
 /
 ----------------------------------------------------------------------------------------------------
-REM delete existing Italy data
+@@simplify_stage_my_areas.sql
+----------------------------------------------------------------------------------------------------
+REM delete existing portugal data
 ----------------------------------------------------------------------------------------------------
 DELETE FROM my_areas
-WHERE (area_code,area_number) IN (
-    SELECT area_code, area_number --, name, level, sys_connect_by_path(area_code||':'||area_number||':'||name,'/') path
-    FROM   my_areas m
-    START WITH area_code = 'SOVC' AND area_number = 380 and name = 'Italy'
-    CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
-                   AND prior m.area_number = m.parent_area_number
-    --order by level
-    )
-AND area_code != 'SOVC'
-/
+WHERE area_code = 'GEOU'
+AND name_hierarchy like 'Portugal,%'
+AND area_number IN(1159321191, 1159321189)
+;
 ----------------------------------------------------------------------------------------------------
-REM insert new Italy date
+REM insert new portugal date
 ----------------------------------------------------------------------------------------------------
+ALTER TABLE my_areas MODIFY name VARCHAR2(76);
 INSERT INTO my_areas
 (AREA_CODE,AREA_NUMBER,AREA_LEVEL,PARENT_AREA_CODE,PARENT_AREA_NUMBER
 ,NAME,MATCHABLE,GEOM,MBR,SUFFIX,NUM_PTS,LAST_UPDATED)
@@ -438,7 +431,7 @@ SET u.name = s.name
 update my_areas
 set name_hierarchy = strava_sdo.name_hierarchy_fn(area_code, area_number,'C')||name 
 where name_hierarchy IS null
---or name_hierarchy like 'Ireland'
+--or name_hierarchy like 'Portugal'
 /
 ----------------------------------------------------------------------------------------------------
 --update number of children
@@ -473,7 +466,7 @@ where ma.last_updated > sysdate -7
 and a.last_updated < ma.last_updated
 and a.processing_status > 3
 and a.processing_status < 9
-and ma.name_hierarchy like 'Italy%'
+and ma.name_hierarchy like 'Portugal%'
 group by a.activity_id, a.name, a.start_date_utc, a.processing_status, a.last_updated 
 ) s
 ON (s.activity_id = u.activity_id)
@@ -481,7 +474,7 @@ WHEN MATCHED THEN UPDATE
 SET u.processing_status = 3
 /
 ----------------------------------------------------------------------------------------------------
---force mark Italy activities from recalculation
+--force mark portugal activities from recalculation
 ----------------------------------------------------------------------------------------------------
 update activities
 set processing_status = 3
@@ -490,7 +483,7 @@ and activity_id IN(
   select distinct aa.activity_id
   from activity_areas aa 
      INNER JOIN my_areas ma ON ma.area_code =aa.area_code and ma.area_number = aa.area_number
-  where ma.name_hierarchy like 'Italy%')
+  where ma.name_hierarchy like 'Portugal%')
 /
 
 select * 
@@ -499,7 +492,7 @@ where activity_id IN(
   select distinct aa.activity_id
   from activity_areas aa 
      INNER JOIN my_areas ma ON ma.area_code =aa.area_code and ma.area_number = aa.area_number
-  where ma.name_hierarchy like 'Italy%')
+  where ma.name_hierarchy like 'Portugal%')
 order by start_date_utc desc
 /
 
@@ -507,7 +500,8 @@ order by start_date_utc desc
 drop table stage_my_areas purge;
 create table stage_my_areas
 as select * from my_areas p
-where p.area_code = 'SOVC' AND p.area_number = 380 and p.name = 'Italy'
+--where p.area_code = 'SOVC' AND p.area_number = 1159321187 and p.name = 'Portugal'
+where p.area_code = 'GEOU' AND p.area_number = 1159321193 and p.name = 'Portugal'
 /
 select * from stage_my_areas;
 
@@ -516,18 +510,21 @@ set p.geom = (
   SELECT SDO_AGGR_UNION(SDOAGGRTYPE(c.geom, 0.01)) sum_geom
   FROM my_areas c
   where c.parent_area_code = p.area_code AND c.parent_area_number = p.area_number)
-where p.area_code = 'SOVC' AND p.area_number = 380 and p.name = 'Italy'
+--where p.area_code = 'SOVC' AND p.area_number = 1159321187 and p.name = 'Portugal'
+where p.area_code = 'GEOU' AND p.area_number = 1159321193 and p.name = 'Portugal'
 /
 update my_areas p
 set num_pts = SDO_UTIL.GETNUMVERTICES(p.geom)
-where p.area_code = 'SOVC' AND p.area_number = 380 and p.name = 'Italy'
+--where p.area_code = 'SOVC' AND p.area_number = 1159321187 and p.name = 'Portugal'
+where p.area_code = 'GEOU' AND p.area_number = 1159321193 and p.name = 'Portugal'
 /
 
 
 with p as (
   select p.area_code, p.area_number, p.name, p.geom
   from my_areas p 
-  where p.area_code = 'SOVC' AND p.area_number = 380 and p.name = 'Italy'
+  --where p.area_code = 'SOVC' AND p.area_number = 1159321187 and p.name = 'Portugal'
+  where p.area_code = 'GEOU' AND p.area_number = 1159321193 and p.name = 'Portugal'
 ), c as (
 select SDO_AGGR_UNION(SDOAGGRTYPE(c.geom, 0.01)) sum_geom
 from p
@@ -547,7 +544,7 @@ SELECT area_code, area_number
 , name, level, sys_connect_by_path(area_code||':'||area_number||':'||name,'/') path
 , name_hierarchy
     FROM   my_areas m
-    START WITH name = 'Bad Säckingen'  --and area_code = 'VMG' --and area_number = 83375005 
+    START WITH name = 'Portugal'  --and area_code = 'VMG' --and area_number = 83375005 
     CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
                    AND prior m.area_number = m.parent_area_number
 /

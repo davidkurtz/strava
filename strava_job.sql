@@ -185,7 +185,7 @@ BEGIN
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'           ,value => FALSE);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'           ,value => k_job_class); 
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL'     
-                                                 , value => 'FREQ=DAILY;BYHOUR=1,2,3,9,15,18,21;BYMINUTE=0,15,30,45');
+                                                 , value => 'FREQ=DAILY;BYHOUR=1,8,15,18,21,22,23;BYMINUTE=0,15,30,45');
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS' ,value => 2);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'          ,value => l_next_start);
   dbms_scheduler.set_job_anydata_value(job_name => k_job_name,argument_position => 1 --quota_pct
@@ -235,7 +235,7 @@ BEGIN
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP'           ,value => FALSE);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS'           ,value => k_job_class); 
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL'     
-                                                 , value => 'FREQ=DAILY;BYHOUR=1,2,3,9,15,18,21;BYMINUTE=0,15,30,45');
+                                                 , value => 'FREQ=DAILY;BYHOUR=1,8,15,18,21,22,23;BYMINUTE=0,15,30,45');
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS' ,value => 2);
   dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'          ,value => l_next_start);
   dbms_scheduler.set_job_anydata_value(job_name => k_job_name,argument_position => 1 --quota_pct

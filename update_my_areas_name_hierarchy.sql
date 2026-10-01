@@ -43,7 +43,7 @@ select * from my_area_hierarchy
 --merge where there is a change
 merge into my_areas u
 using (
-select h.* 
+select h.*
 from my_area_hierarchy h
   inner join my_areas a on h.area_code = a.area_code and h.area_number = A.area_number
 WHERE h.name_hierarchy != a.name_hierarchy OR a.name_hierarchy IS NULL
@@ -58,5 +58,5 @@ alter TRIGGER strava.my_areas_update_name enable;
 spool off
 
 
-select * from my_areas where name like '%Kilruddery%';
-select * from my_areas where name like '%Ightham%';
+--select * from my_areas where name like '%Kilruddery%';
+--select * from my_areas where name like '%Ightham%';
