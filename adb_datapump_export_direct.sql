@@ -28,6 +28,7 @@ DECLARE
 BEGIN
   l_file_name := 'export_strava_%T';
   l_urifile_name := 'https://objectstorage.uk-london-1.oraclecloud.com/n/lrp1qmpxv8ea/b/bucket-gofaster1/o/'||l_file_name;
+  
   h := DBMS_DATAPUMP.OPEN
        (operation => 'EXPORT'
        ,job_mode => 'SCHEMA'
@@ -124,8 +125,10 @@ ADMIN      SYS_EXPORT_SCHEMA_01          3 000000112C48EE08 MASTER              
 DECLARE
   h NUMBER;
 BEGIN
-  FOR i IN (SELECT DISTINCT owner_name, job_name FROM dba_datapump_jobs
-  WHERE state = 'NOT RUNNING') 
+  FOR i IN (
+    SELECT DISTINCT owner_name, job_name FROM dba_datapump_jobs
+    WHERE state = 'NOT RUNNING'
+  ) 
   LOOP
     -- Attach to running job by name
     h := DBMS_DATAPUMP.ATTACH(job_name => i.owner_name||'.'||i.job_name);

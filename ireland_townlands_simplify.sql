@@ -12,8 +12,12 @@ where area_Code = 'TOWN'
 ----------------------------------------------------------------------------------------------------
 --create a backup of the my_areas table
 ----------------------------------------------------------------------------------------------------
-create table backup_my_areas as select * from my_areas;
-
+drop table backup_my_areas purge;
+create table backup_my_areas as select * from my_areas m
+START WITH area_code = 'CTY' and area_number = '260000'
+CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
+               AND prior m.area_number = m.parent_area_number
+/
 ----------------------------------------------------------------------------------------------------
 --function to trim frequent Irish townland name suffixes
 ----------------------------------------------------------------------------------------------------
@@ -36,7 +40,9 @@ BEGIN
 	IF l_last_word IN('Upper','Lower','Middle'
 	                 ,'North','South','East','West'
 					 ,'Big','Great','Little','Beg','More'
-					 ,'Demesne','Deerpark','Paddock','Mountain','Domain','Commons','Brakes'
+                     ,'Housefarm','Castlefarm'
+					 ,'Demesne','Deerpark','Paddock','Park','Grove','Mountain','Domain','Common','Commons','Brakes'
+                     ,'Hill','(1st Division)','(2nd Division)','(3rd Division)'
 					 ) THEN
       l_name := l_other_words;
 	ELSE 
@@ -62,11 +68,15 @@ select s.parent_area_code, s.parent_area_number
 ,      t.area_code, t.area_number, t.name
 ,      sdo_geom.relate(s.geom,'DETERMINE',t.geom,1)
 from my_areas s, my_areas t
-where (s.area_number != t.area_number OR s.area_Code != t.area_code)
+where s.rowid != t.rowid
+--and (s.area_number != t.area_number OR s.area_Code != t.area_code)
+and not (s.parent_area_code = t.parent_area_code
+and s.parent_area_number = t.parent_area_number)
 and strava.townland_trim_suffix(s.name) = strava.townland_trim_suffix(t.name)
-and s.rowid != t.rowid
-and s.name like 'Kindlestown%'
-and t.name like 'Kindlestown%'
+and s.parent_area_code IN('CITC')
+and t.parent_area_code IN('CITC')
+--and s.name like 'Kindlestown%'
+--and t.name like 'Kindlestown%'
 /
 
 
@@ -77,14 +87,13 @@ select s.parent_area_code, s.parent_area_number
 ,      t.area_code, t.area_number, t.name
 ,      sdo_geom.relate(s.geom,'DETERMINE',t.geom,1)
 from my_areas s, my_areas t
-where (s.area_number != t.area_number OR s.area_Code != t.area_code)
---and s.parent_area_code = t.parent_area_code
---and s.parent_area_number = t.parent_area_number
---and strava.townland_trim_suffix(s.name) = strava.townland_trim_suffix(t.name)
-and s.rowid != t.rowid
---and t.parent_area_code IN('CTY')
-and s.name like 'Greystones-Delgany'
-and t.name like 'Kindlestown%'
+where s.rowid != t.rowid
+--and (s.area_number != t.area_number OR s.area_Code != t.area_code)
+and (s.parent_area_code = t.parent_area_code
+and s.parent_area_number = t.parent_area_number)
+and strava.townland_trim_suffix(s.name) = strava.townland_trim_suffix(t.name)
+--and s.name = t.name
+and t.parent_area_code IN('CITC')
 /
 
 ----------------------------------------------------------------------------------------------------
@@ -121,8 +130,9 @@ BEGIN
     from   my_areas t, my_areas s, my_areas p
     where  t.area_code IN('TOWN')
     and    s.area_code IN('TOWN')
-    and    p.area_code = 'CTY' --children of county
-    and    p.area_number = 40000 --qwert
+	and    p.area_code != 'UCTL'
+    --and    p.area_code = 'CITC' --children of city county
+    --and    p.area_number = 265002 --qwert
     --and    s.name like 'Glassamucky%'
     --and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
@@ -265,7 +275,7 @@ BEGIN
 	)
 	select * from x
 	ORDER BY s_area_number, t_area_number
-	--FETCH FIRST 50 ROWS ONLY
+	FETCH FIRST 100 ROWS ONLY
   ) LOOP
     dbms_output.put_line('Considering '||i.s_area_code||'-'||i.s_area_number||':'||i.s_name
 	                          ||' -v- '||i.t_area_code||'-'||i.t_area_number||':'||i.t_name);
@@ -383,8 +393,8 @@ BEGIN
     and    u.area_code IN('UCTL')
 	--and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
-    and    p.area_code = 'SETL' --children of county
-	and    p.area_number = 260000
+    --and    p.area_code = 'CITC' --children of county
+	--and    p.area_number = 260000
     and    p.area_code = u.parent_area_code
     and    p.area_number = u.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -562,4 +572,18 @@ having count(c.area_number) != NVL(p.num_children,0)
 ON (s.area_code = u.area_code AND s.area_number = u.area_number)
 WHEN MATCHED THEN UPDATE 
 SET u.num_children = s.child_count
+/
+----------------------------------------------------------------------------------------------------
+--make child areas matchable with city councils
+----------------------------------------------------------------------------------------------------
+update my_areas c
+set c.matchable = 1
+where c.parent_area_code = 'CITC'
+and c.matchable = 0
+and exists (
+  select 'x' 
+  from my_areas p 
+  where p.area_code = c.parent_area_code And p.area_number = c.parent_area_number
+  and p.matchable = 1
+  and not p.name like '%'||c.name||'%')
 /

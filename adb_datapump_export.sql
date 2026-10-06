@@ -3,7 +3,7 @@ clear screen
 set echo on serveroutput on 
 
 ----------------------------------------------------------------------------------------------------
---if you specify this, you dont need to specify a ccredential!!!
+--if you specify this, you dont need to specify a credential!!!
 ----------------------------------------------------------------------------------------------------
 ALTER DATABASE PROPERTY SET DEFAULT_CREDENTIAL = 'ADMIN.OBJECT_STORE_CRED';
 
