@@ -8,16 +8,11 @@ select 'UCTL', 'User Combined Townlands', area_level
 from my_area_codes
 where area_Code = 'TOWN'
 /
-
 ----------------------------------------------------------------------------------------------------
 --create a backup of the my_areas table
 ----------------------------------------------------------------------------------------------------
 drop table backup_my_areas purge;
-create table backup_my_areas as select * from my_areas m
-START WITH area_code = 'CTY' and area_number = '260000'
-CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
-               AND prior m.area_number = m.parent_area_number
-/
+create table backup_my_areas as 
 ----------------------------------------------------------------------------------------------------
 --function to trim frequent Irish townland name suffixes
 ----------------------------------------------------------------------------------------------------
@@ -586,4 +581,35 @@ and exists (
   where p.area_code = c.parent_area_code And p.area_number = c.parent_area_number
   and p.matchable = 1
   and not p.name like '%'||c.name||'%')
+/
+----------------------------------------------------------------------------------------------------
+-- children with same name as parent
+----------------------------------------------------------------------------------------------------
+update my_areas c
+set c.matchable = 0
+where c.matchable = 1
+and exists(
+  SELECT 'x' FROM my_areas p 
+  where p.area_code = c.parent_area_code And p.area_number = c.parent_area_number
+  and p.matchable = 1
+  and p.name = c.name)
+/
+select p.area_code, p.name, c.*
+from my_areas c
+, my_areas p 
+where p.area_code = c.parent_area_code And p.area_number = c.parent_area_number
+and p.matchable = 1
+and c.matchable = 1
+--and not p.area_code IN('SOVC')
+and p.name = c.name
+/
+----------------------------------------------------------------------------------------------------
+--remove Townlands with names that match counties
+----------------------------------------------------------------------------------------------------
+update my_areas
+set matchable=0
+where matchable=1
+and area_code IN('UCTL','TOWN')
+and area_number IN(260296 --Ireland, Leinster, Dublin, Dún Laoghaire-Rathdown, Cork
+                  )
 /
