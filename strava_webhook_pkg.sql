@@ -31,6 +31,7 @@ k_module CONSTANT VARCHAR2(64 CHAR) := $$PLSQL_UNIT;
 k0_unprocessed CONSTANT INTEGER := 0;
 k1_processed   CONSTANT INTEGER := 1;
 k2_superceded  CONSTANT INTEGER := 2;
+k60_deadlocked CONSTANT INTEGER := -60;
 ----------------------------------------------------------------------------------------------------
 --this is a webhook set up and it is specified by the user and echoed back by Strava
 g_verify_token CONSTANT VARCHAR2(100) := 'PlaceCloud42'; 
@@ -137,7 +138,7 @@ BEGIN
     SELECT h.*, a.activity_id
     FROM webhook_events h
 	  LEFT OUTER JOIN activities a ON a.activity_id = h.object_id 
-    WHERE h.processing_status = k0_unprocessed
+    WHERE h.processing_status IN(k0_unprocessed,k60_deadlocked)
 	AND   h.object_type = 'activity'
 	ORDER BY h.id
     FOR UPDATE OF h.processing_status 

@@ -44,7 +44,8 @@ select * FROM dba_network_acls;
 ----------------------------------------------------------------------------------------------------
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
-	host => 'raw.githubusercontent.com',
+	--host => 'raw.githubusercontent.com',
+	host => 'download.data.public.lu',
 	--host => 'hub.huwise.com',
 	--host => 'www.planning.data.gov.uk',
     --host => '*.arcgis.com',

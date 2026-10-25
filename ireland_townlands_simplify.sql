@@ -605,6 +605,7 @@ and p.name = c.name
 /
 ----------------------------------------------------------------------------------------------------
 --remove Townlands with names that match counties
+--eg. Townland of Cork near Bray in Dún Laoghaire-Rathdown
 ----------------------------------------------------------------------------------------------------
 update my_areas
 set matchable=0
@@ -612,4 +613,25 @@ where matchable=1
 and area_code IN('UCTL','TOWN')
 and area_number IN(260296 --Ireland, Leinster, Dublin, Dún Laoghaire-Rathdown, Cork
                   )
+/
+merge into my_areas u
+using (
+with a as (
+select /*+MATERIALIZE*/ m.*, level hier_level, sys_connect_by_path(name,'/') path
+from my_areas m
+START WITH m.parent_area_code is null and m.parent_area_number IS NULL and m.name = 'Ireland'
+CONNECT BY NOCYCLE prior m.area_code   = m.parent_area_code
+               AND prior m.area_number = m.parent_area_number
+)
+select DISTINCT a2.area_Code, a2.area_number, a2.name
+from a a1, a a2
+where a1.name = a2.name
+and a1.matchable = 1 and a1.area_code IN('CTY','CITC')
+and a2.matchable = 1 and a2.area_code IN('TOWN','UCTL')
+and a1.area_code != a2.area_code
+and a1.hier_level < a2.hier_level
+) s
+on (u.area_code = s.area_code and u.area_number = s.area_number and u.name = s.name)
+when matched then update
+set u.matchable = 0
 /
