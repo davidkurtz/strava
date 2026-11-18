@@ -32,12 +32,17 @@ BEGIN
     l_last_word := REGEXP_SUBSTR(l_name, '[^[:space:]]+$');
     l_other_words := REGEXP_REPLACE(l_name, '\s+[^[:space:]]+$', '');
     --dbms_output.put_line(l_counter||':'||l_other_words||'~'||l_last_word);
-	IF l_last_word IN('Upper','Lower','Middle'
-	                 ,'North','South','East','West'
-					 ,'Big','Great','Little','Beg','More'
-                     ,'Housefarm','Castlefarm'
-					 ,'Demesne','Deerpark','Paddock','Park','Grove','Mountain','Domain','Common','Commons','Brakes'
-                     ,'Hill','(1st Division)','(2nd Division)','(3rd Division)'
+	IF l_last_word IN('Upper','Lower','Middle','Low','High','Central','Long'
+                     ,'North','South','East','West','English','Irish','New','Old','Black','White'
+					 ,'Big','Great','Little','Beg','More','Near','Far','Within','Without'
+                     ,'Inward','Outward','Inside','Outside','Eighter','Oughter','Etra','Otra'
+                     ,'Errity','Intake'
+                     --
+                     ,'Barr','Bog','Bogs','Brakes','Burrow','Castlefarm','Churchland','Churchquarter','Common','Commons','Cottage','Crownlands','Curragh'
+                     ,'Deerpark','Demesne','Domain','Farm','Glebe','Grange','Grove','Hill','Housefarm'
+                     ,'Latin','Mountain','Mudlands','Murragh','Paddock','Park','Parks','Plain','Rocks','Townparks'					 
+                     ,'(1st Division)','(2nd Division)','(3rd Division)'
+                     --,'1st Division','2nd Division','3rd Division'
 					 ) THEN
       l_name := l_other_words;
 	ELSE 
@@ -51,11 +56,30 @@ END;
 select area_code, area_number, name, matchable, parent_area_code, parent_area_number, townland_trim_suffix(name)
 from my_areas
 where 1=1
---and area_code = 'TOWN'
-and (name like 'Kindlestown%' or area_number = 15006)
+and area_code = 'TOWN'
+and (name like '%Curragh')
 --and name like '%(%)%'
-order by 1
+order by 1,2
 /
+--grange
+
+
+with x as (
+select a.*, townland_trim_suffix(name) townland_trim_suffix
+from my_areas a
+where area_code = 'TOWN'
+and matchable = 1
+and parent_area_code IN('CTY','CITC')
+and name like '% %'
+and not name like '% and %'
+and not name like '% or %'
+and not name like '%Island'
+)
+select area_code, area_number, name, matchable, parent_area_code, parent_area_number, townland_trim_suffix
+from x 
+where name = townland_trim_suffix
+/
+
 
 --non-siblings
 select s.parent_area_code, s.parent_area_number
@@ -118,7 +142,8 @@ BEGIN
 ,        s.area_code s_area_code, s.area_number s_area_number, s.area_level s_area_level, s.name s_name, s.geom s_geom
 ,        t.area_code t_area_code, t.area_number t_area_number, t.area_level t_area_level, t.name t_name, t.geom t_geom
 ,        strava.townland_trim_suffix(t.name) t_other_words
-,        sdo_geom.relate(s.geom,'TOUCH',t.geom,1) touching
+,        sdo_geom.relate(s.geom,'TOUCH+OVERLAPBDYINTERSECT',t.geom,1) touching
+,        sdo_geom.relate(s.geom,'determine',t.geom,1) relationship
 --,        round(sdo_geom.sdo_area(s.geom, unit=>'unit=sq_km'),3) settlement_km_sq
 --,        round(sdo_geom.sdo_area(t.geom, unit=>'unit=sq_km'),3) town_km_sq
 --,        round(sdo_geom.sdo_area(sdo_geom.sdo_intersection(t.geom,s.geom,1), unit=>'unit=sq_km'),3) intersect_km_sq    
@@ -126,11 +151,6 @@ BEGIN
     where  t.area_code IN('TOWN')
     and    s.area_code IN('TOWN')
 	and    p.area_code != 'UCTL'
-    --and    p.area_code = 'CITC' --children of city county
-    --and    p.area_number = 265002 --qwert
-    --and    s.name like 'Glassamucky%'
-    --and    p.parent_area_code = 'PROV'
-	--and    p.parent_area_number IN(27001,27002,27003,27004)
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -138,7 +158,14 @@ BEGIN
     and    t.parent_area_code = s.parent_area_code --sibling
     and    t.parent_area_number = s.parent_area_number --sibling
     and    s.area_number < t.area_number --not the same area twice
-    and    sdo_geom.relate(s.geom,'TOUCH',t.geom,1) = 'TOUCH'
+    --
+    --and    p.area_code = 'CTY' --children of city county
+    --and    p.area_number = 50000 --qwert
+    --and    s.name like 'Ballyholey%'
+    --and    t.name like 'Ballyholey%'
+    --and    p.parent_area_code = 'PROV'
+	--and    p.parent_area_number IN(27001,27002,27003,27004)
+    and    sdo_geom.relate(s.geom,'TOUCH+OVERLAPBDYINTERSECT',t.geom,1) = 'TOUCH+OVERLAPBDYINTERSECT'
     and    SDO_ANYINTERACT(t.geom, s.geom)
     and    SDO_ANYINTERACT(t.mbr, s.mbr) 
 	)
@@ -253,9 +280,12 @@ BEGIN
     from   my_areas t, my_areas s, my_areas p
     where  t.area_code IN('UCTL')
     and    s.area_code IN('UCTL')
+    --
     --and    p.area_code = 'CTY' --children of county
-	--and    p.parent_area_code = 'PROV'
+    --and    p.area_number = 50000 --qwert
+    --and    p.parent_area_code = 'PROV'
 	--and    p.parent_area_number IN(27001,27002,27003,27004)
+    --and    s.name like 'Ballyholey%'
     and    p.area_code = s.parent_area_code
     and    p.area_number = s.parent_area_number
     and    p.area_code = t.parent_area_code
@@ -552,22 +582,19 @@ and    (num_pts IS NULL or mbr IS NULL)
 ----------------------------------------------------------------------------------------------------
 --correct count of number of children
 ----------------------------------------------------------------------------------------------------
-merge into my_areas u
-using (
-select p.area_code, p.area_number, p.name, p.num_children, count(c.area_number) child_count
-from my_areas p
-  left outer join my_areas c
-    on p.area_code = c.parent_area_code
-    and p.area_number = c.parent_area_number
-where 1=1
---and c.num_children IS NULL
-group by p.area_code, p.area_number, p.name, p.num_children
-having count(c.area_number) != NVL(p.num_children,0)
-) s
-ON (s.area_code = u.area_code AND s.area_number = u.area_number)
-WHEN MATCHED THEN UPDATE 
-SET u.num_children = s.child_count
-/
+@@update_num_children.sql
+
+----------------------------------------------------------------------------------------------------
+-- actvitity areas for non-matchable areas with no children
+----------------------------------------------------------------------------------------------------
+SELECT count(*), count(distinct aa.activity_id)
+FROM my_areas m 
+  INNER JOIN activity_areas aa ON aa.area_Code = m.area_Code AND m.area_Number = aa.area_number
+where m.matchable = 0
+and (m.num_children = 0 OR m.num_children IS NULL)
+;
+
+
 ----------------------------------------------------------------------------------------------------
 --make child areas matchable with city councils
 ----------------------------------------------------------------------------------------------------

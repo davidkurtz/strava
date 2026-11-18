@@ -22,7 +22,7 @@ column job_priority heading 'Job|Priority' format 9999
 column last_start_date format a32
 column last_run_duration format a30
 column last_updated format a32
-column log_date format a32
+column log_date format a34
 column log_id format 99999999
 column long_all_usage heading 'Long|All|Usage' format 9999
 column long_read_usage heading 'Long|Read|Usage' format 9999
@@ -41,13 +41,13 @@ column repeat_interval format a56
 column req_type heading 'Req|Type' format a4
 column request_time format a25
 column run_count heading 'Run|Count' format 99999
-column run_duration format a16
+column run_duration format a19
 column schedule_type heading 'Schedule|Type' format a9
 column short_all_usage heading 'Short|All|Usage' format 9999
 column short_read_usage heading 'Short|Read|Usage' format 9999
 column start_date format a32
-column start_date_local format a25
-column start_date_utc format a25
+column start_date_local format a27
+column start_date_utc format a27
 column state format a10
 column status format a10
 column status_msg format a70
@@ -56,9 +56,9 @@ column type format a11
 column updates format a50
 column url format a78
 column versions_endscn heading 'Version|End SCN' format 99999999999999
-column versions_endtime heading 'Version|End Time' format a20
+column versions_endtime heading 'Version|End Time' format a28
 column versions_startscn heading 'Version|Start SCN' format 99999999999999
-column versions_starttime heading 'Version|Start Time' format a20
+column versions_starttime heading 'Version|Start Time' format a28
 column versions_operation heading 'Version|Operation' format a9
 column versions_xid heading 'Version|Transaction ID' format a16
 column visibility format a14

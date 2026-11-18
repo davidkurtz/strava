@@ -35,6 +35,8 @@ BEGIN
                  ||p_activities.elapsed_time
                  ||p_activities.moving_time
                  ||p_activities.elevation_gain
+				 ||p_activities.gear_id
+				 ||p_activities.gear_name
 				 ||p_activities.photo_count
 				 ||p_activities.num_pts
 				 );

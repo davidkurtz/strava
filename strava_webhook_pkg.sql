@@ -206,10 +206,10 @@ BEGIN
 				  l_column := l_key;
 				END IF;
 
-                l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = :1 WHERE activity_id = :2';
+                --l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = :1 WHERE activity_id = :2';
                 IF l_key = 'private' THEN
-  			    dbms_output.put_line(k_action||':'||l_sql||';'||l_value||','||i.activity_id);
-			    EXECUTE IMMEDIATE l_sql USING l_value, i.activity_id;
+  			      --.put_line(k_action||':'||l_sql||';'||l_value||','||i.activity_id);
+			      --EXECUTE IMMEDIATE l_sql USING l_value, i.activity_id;
   				  l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = TO_BOOLEAN(:1 DEFAULT NULL ON CONVERSION ERROR) WHERE activity_id = :2';
 				ELSE
 				  l_sql := 'UPDATE ACTIVITIES SET '||l_column||' = :1 WHERE activity_id = :2';

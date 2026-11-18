@@ -4,6 +4,9 @@ set echo on timi on serveroutput on
 spool strava_job.lst
 rem requires GRANT MANAGE SCHEDULER TO strava;;
 ----------------------------------------------------------------------------------------------------
+ReM consider adding weekly/monthly bulk update job to deal with cropping etc - low prioritys
+REM strava_http.get_athlete_activities(p_page=>1,p_per_page=>200);
+----------------------------------------------------------------------------------------------------
 CREATE OR REPLACE PACKAGE strava.strava_job AS
 PROCEDURE create_activity_area_list_upd_all_job;
 PROCEDURE create_activity_hsearch_upd_all;
@@ -14,6 +17,10 @@ PROCEDURE create_process_webhook_queue_job;
 PROCEDURE create_purge_api_log_job;
 PROCEDURE create_purge_event_queue_job;
 PROCEDURE create_renew_strava_tokens_job;
+
+PROCEDURE create_get_athlete_activities_job
+(p_per_page INTEGER DEFAULT 1
+);
 
 PROCEDURE create_job_class
 (p_job_class_name          all_scheduler_job_classes.job_class_name%TYPE
@@ -392,6 +399,61 @@ BEGIN
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 END create_renew_strava_tokens_job;
 ----------------------------------------------------------------------------------------------------
+PROCEDURE create_get_athlete_activities_job
+(p_per_page INTEGER 
+) is
+  k_job_name  CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.GET_ATHLETE_ACTIVITIES_JOB';
+  k_job_class CONSTANT VARCHAR2(128 CHAR) :=    'SYS.GET_ATHLETE_ACTIVITIES_CLASS';
+  l_job_name VARCHAR2(128 CHAR);
+
+  l_module VARCHAR2(64 CHAR);
+  l_action VARCHAR2(64 CHAR);  
+BEGIN
+  dbms_application_info.read_module(module_name=>l_module,action_name=>l_action);
+  dbms_application_info.set_module(module_name=>k_module,action_name=>k_job_name);
+
+  l_job_name := k_job_name||'_'||p_activity_id;
+
+  create_job_class(k_job_class,'LOW', p_log_history=>7);
+  
+  BEGIN
+    dbms_scheduler.create_job   
+    (job_name => l_job_name
+    ,job_type => 'STORED_PROCEDURE'
+    ,job_action => 'STRAVA.STRAVA_HTTP.GET_ATHLETE_ACTIVITIES'
+    ,number_of_arguments => 4
+    ,start_date => SYSTIMESTAMP AT TIME ZONE 'UTC'
+    ,job_class => k_job_class
+    ,enabled => FALSE
+    ,auto_drop  => TRUE
+    );
+  EXCEPTION WHEN e_job_already_exists THEN 
+    dbms_output.put_line('Job '||l_job_name||' Already Exists');
+    dbms_scheduler.disable(name => l_job_name);
+    dbms_scheduler.set_attribute(name => l_job_name, attribute => 'AUTO_DROP' , value => TRUE);
+    dbms_scheduler.set_attribute(name => l_job_name, attribute => 'JOB_CLASS' , value => k_job_class);
+    dbms_scheduler.set_attribute(name => l_job_name, attribute => 'START_DATE', value => SYSTIMESTAMP AT TIME ZONE 'UTC');
+  END;
+  dbms_scheduler.set_job_anydata_value(job_name => k_job_name,argument_position => 4 --per page
+                                      ,argument_value => SYS.ANYDATA.convertNumber(p_per_page));
+
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'AUTO_DROP', value => FALSE);
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'JOB_CLASS', value => k_job_class);
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE'      
+                              ,value => TRUNC(SYSTIMESTAMP AT TIME ZONE 'UTC') + INTERVAL '1' DAY);
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'REPEAT_INTERVAL' ,value => 'FREQ=MONTHLY;BYDAY=1TUE;BYHOUR=2;BYMINUTE=42');
+  --add date range???
+  dbms_scheduler.set_attribute(name => k_job_name, attribute => 'NUMBER_OF_ARGUMENTS', value => 4);
+  dbms_scheduler.enable(name => k_job_name);
+
+  dbms_output.put_line('Job '||l_job_name||' Submitted/Enabled');
+  dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
+EXCEPTION 
+  WHEN e_job_running THEN
+    dbms_output.put_line('Job '||l_job_name||' Running');
+    dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
+END create_get_athlete_activities_job;
+----------------------------------------------------------------------------------------------------
 PROCEDURE create_get_activity_job 
 (p_activity_id activities.activity_id%TYPE
 ) IS
@@ -620,6 +682,7 @@ EXECUTE strava_job.create_renew_strava_tokens_job;
 EXECUTE strava_job.create_batch_load_activities_job;
 EXECUTE strava_job.create_update_strava_activity_job;
 EXECUTE strava_job.create_process_webhook_queue_job;
+EXECUTE strava_job.create_get_athlete_activities_job;
 
 set serveroutput on
 /*

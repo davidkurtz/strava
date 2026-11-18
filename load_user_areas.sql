@@ -9,11 +9,9 @@ DROP TABLE stage_my_areas PURGE;
 CREATE TABLE stage_my_areas (
     AREA_CODE VARCHAR2(4 CHAR) NOT NULL , 
 	AREA_NUMBER NUMBER(*,0) NOT NULL , 
-	UQID VARCHAR2(20 CHAR) NOT NULL , 
  	AREA_LEVEL NUMBER(*,0), 
 	PARENT_AREA_CODE VARCHAR2(4 CHAR), 
 	PARENT_AREA_NUMBER NUMBER(*,0), 
-	PARENT_UQID VARCHAR2(20 CHAR), 
 	NAME VARCHAR2(100 CHAR), 
 	MATCHABLE NUMBER(*,0) DEFAULT 1, 
 --
@@ -24,7 +22,6 @@ CREATE TABLE stage_my_areas (
 );
 
 ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_pk PRIMARY KEY (area_code, area_number);
-ALTER TABLE stage_my_areas ADD CONSTRAINT stage_my_areas_pk2 UNIQUE (uqid);
 
 INSERT INTO USER_SDO_GEOM_METADATA (
     TABLE_NAME,
@@ -63,12 +60,38 @@ INSERT INTO my_area_codes VALUES ('USER','User Defined Areas',9);
 COMMIT;
 
 delete from stage_my_areas;
+delete my_areas where area_Code = 'USER' AND area_number = 260322;
+----------------------------------------------------------------------------------------------------
+--Ireland, Knocknacree, Dalkey
+----------------------------------------------------------------------------------------------------
+INSERT INTO stage_my_areas (area_code, area_number, parent_area_code, parent_area_number, name, matchable, geom)
+VALUES (
+  'USER',260323,'TOWN',260323,
+  'Knocknacree Road',0,
+  SDO_GEOMETRY(
+    2003,              -- 2003 = polygon / 2D line type
+    4326,              -- SRID (WGS84)
+    NULL, 
+    SDO_ELEM_INFO_ARRAY(1,1003,1),  -- simple polygon
+    SDO_ORDINATE_ARRAY(
+      -6.103691,53.272181,    -- lon, lat
+	  -6.103133,53.271873,
+	  -6.099507,53.272438,
+	  -6.097019,53.273201,
+	  -6.097501,53.273656,
+	  -6.100666,53.272605,
+	  -6.103691,53.272200,
+      -6.103691,53.272181
+    )
+  )
+);
+/*
 ----------------------------------------------------------------------------------------------------
 --France, Col du Galibier
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',2507301,'FRA2507301','Col du Galibier',
+  'USER',2507301,'Col du Galibier',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -83,13 +106,12 @@ VALUES (
     )
   )
 );
-/*
 ----------------------------------------------------------------------------------------------------
 --France, Col de la Bonette
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',2500401,'FRA2500401','Col de la Cime de la Bonette',
+  'USER',2500401,'Col de la Cime de la Bonette',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -107,9 +129,9 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 --France, Col de la Cime de la Bonette
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',2500402,'FRA2500402','Col de la Bonette',
+  'USER',2500402,'Col de la Bonette',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -131,9 +153,9 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 --France, Mt. Ventoux
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',2502601,'FRA2502601','Mont Ventoux',
+  'USER',2502601,'Mont Ventoux',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -151,9 +173,9 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 -- Ireland, Glencree, Wicklow
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',250003,'IRL25003','Glencree',
+  'USER',250003,'Glencree',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -172,9 +194,9 @@ VALUES (
 --Ireland, Sally Gap
 ----------------------------------------------------------------------------------------------------
 delete from stage_my_areas;
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',250001,'IRL25001','Sally Gap',
+  'USER',250001,'Sally Gap',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -192,9 +214,9 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 -- Ireland, Wicklow Gap
 ----------------------------------------------------------------------------------------------------
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',250002,'IRL25002','Wicklow Gap',
+  'USER',250002,'Wicklow Gap',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -211,10 +233,9 @@ VALUES (
 ----------------------------------------------------------------------------------------------------
 --Italy
 ----------------------------------------------------------------------------------------------------
---select * from my_areas where uqid like 'ITA%';
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, geom)
 VALUES (
-  'USER',380001,'IT380001','Passo dello Stelvio',
+  'USER',380001,'Passo dello Stelvio',
   SDO_GEOMETRY(
     2003,              -- 2003 = polygon / 2D line type
     4326,              -- SRID (WGS84)
@@ -233,9 +254,9 @@ VALUES (
 -- UK, Swains Lane, London
 ----------------------------------------------------------------------------------------------------
 delete from stage_my_areas;
-INSERT INTO stage_my_areas (area_code, area_number, uqid, name, parent_area_code, parent_area_number, geom)
+INSERT INTO stage_my_areas (area_code, area_number, name, parent_area_code, parent_area_number, geom)
 VALUES (
-  'USER',5063201,'UKLBO5063201','Swains Lane','LBO', 50632,
+  'USER',5063201,'Swains Lane','LBO', 50632,
   SDO_GEOMETRY(
     2003,  -- two-dimensional polygon
     4326,
@@ -403,50 +424,17 @@ SET u.area_level = s.area_level
 , u.num_pts = s.num_pts
 , u.num_children = null
 WHEN NOT MATCHED THEN INSERT 
-(area_code, area_number, uqid, area_level, parent_area_code, parent_area_number, name, matchable
+(area_code, area_number, area_level, parent_area_code, parent_area_number, name, matchable
 , geom, mbr, num_pts, num_children)
 VALUES
-(s.area_code, s.area_number, s.uqid, s.area_level, s.parent_area_code, s.parent_area_number, s.name, s.matchable
+(s.area_code, s.area_number, s.area_level, s.parent_area_code, s.parent_area_number, s.name, s.matchable
 , s.geom, s.mbr, s.num_pts, NULL)
 /
 SELECT * FROM MY_AREAS WHERE area_code = 'USER';
 ----------------------------------------------------------------------------------------------------
--- correct parent uqid 
-----------------------------------------------------------------------------------------------------
-merge into my_areas u
-using (
-select c.area_level, c.area_code, c.area_number, p.uqid parent_uqid
-from my_areas c
-  inner join my_areas p
-    on p.area_code = c.parent_area_code
-    and p.area_number = c.parent_area_number
-where c.parent_uqid IS NULL 
-and c.parent_area_code IS NOT NULL
-order by c.area_level
-) s
-ON (s.area_code = u.area_code AND s.area_number = u.area_number)
-WHEN MATCHED THEN UPDATE 
-SET u.parent_uqid = s.parent_uqid
-/
-----------------------------------------------------------------------------------------------------
 --correct count of number of children
 ----------------------------------------------------------------------------------------------------
-merge into my_areas u
-using (
-select p.area_code, p.area_number, p.name, p.num_children, count(c.area_number) child_count
-from my_areas p
-  left outer join my_areas c
-    on p.area_code = c.parent_area_code
-    and p.area_number = c.parent_area_number
-where 1=1
---and c.num_children IS NULL
-group by p.area_code, p.area_number, p.name, p.num_children
-having count(c.area_number) != NVL(p.num_children,0)
-) s
-ON (s.area_code = u.area_code AND s.area_number = u.area_number)
-WHEN MATCHED THEN UPDATE 
-SET u.num_children = s.child_count
-/
+@@update_num_children.sql
 ----------------------------------------------------------------------------------------------------
 -- mark all acitivities potentially affected by  ew user area 
 ----------------------------------------------------------------------------------------------------
@@ -507,3 +495,11 @@ SET u.processing_status = 4
 --EXECUTE dbms_Scheduler.run_job('STRAVA.ACTIVITY_AREA_LIST_UPD_ALL_JOB',FALSE) /*this runs a job to create the update jobs*/; 
 --EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB') /*in current session*/;
 --EXECUTE dbms_Scheduler.run_job('STRAVA.UPDATE_STRAVA_ACTIVTY_JOB',FALSE);
+
+----------------------------------------------------------------------------------------------------
+--activities with staged area identified
+----------------------------------------------------------------------------------------------------
+select *
+from stage_my_areas a 
+  inner join activity_areas aa on a.area_Code= aa.area_code and a.area_number = aa.area_number
+/

@@ -42,8 +42,8 @@ PROCEDURE batch_update_strava_activity
 PROCEDURE get_athlete_activities
 (p_before              IN TIMESTAMP WITH TIME ZONE DEFAULT NULL
 ,p_after               IN TIMESTAMP WITH TIME ZONE DEFAULT NULL
-,p_page                INTEGER DEFAULT NULL
-,p_per_page            INTEGER DEFAULT NULL
+,p_page                INTEGER DEFAULT 1
+,p_per_page            INTEGER DEFAULT 1
 );
 
 PROCEDURE get_activity
@@ -103,9 +103,9 @@ k_max_athlete_activities CONSTANT INTEGER := 200;
 ----------------------------------------------------------------------------------------------------
 --special characters
 ----------------------------------------------------------------------------------------------------
-k_lf                     CONSTANT VARCHAR2(1 CHAR)  := CHR(10);
-k_cr                     CONSTANT VARCHAR2(1 CHAR)  := CHR(13);
-k_ampersand              CONSTANT VARCHAR2(1 CHAR)  := CHR(38);
+k_lf                     CONSTANT VARCHAR2(1 CHAR) := CHR(10);
+k_cr                     CONSTANT VARCHAR2(1 CHAR) := CHR(13);
+k_ampersand              CONSTANT VARCHAR2(1 CHAR) := CHR(38);
 ----------------------------------------------------------------------------------------------------
 --spatial constants
 ----------------------------------------------------------------------------------------------------
@@ -114,8 +114,8 @@ k_geom_line     CONSTANT INTEGER := 2002;
 ----------------------------------------------------------------------------------------------------
 -- access tokens
 ----------------------------------------------------------------------------------------------------
-g_access_token  VARCHAR2(4000);
-g_refresh_token VARCHAR2(4000);
+g_access_token  VARCHAR2(4000 CHAR);
+g_refresh_token VARCHAR2(4000 CHAR);
 g_client_id     VARCHAR2(100 CHAR);
 g_client_secret VARCHAR2(100 CHAR);
 g_expires_at    TIMESTAMP;
@@ -780,7 +780,7 @@ BEGIN
     --and name = 'Loop'
     --and not description like '%myWindsock%'
 	--AND area_list like '%London%'
-	AND processing_status = k4_status_areas_processed
+	AND processing_status = k5_status_area_list_updated --was k4_status_areas_processed
     --ORDER BY last_updated desc
     ORDER BY start_date_utc DESC
     --FOR UPDATE OF processing_status
@@ -883,7 +883,7 @@ PROCEDURE get_athlete_activities
 ,p_page      INTEGER 
 ,p_per_page  INTEGER 
 ) IS
-  l_url      VARCHAR2(4000);
+  l_url      VARCHAR2(4000 CHAR);
   l_req      UTL_HTTP.req;
   l_resp     UTL_HTTP.resp;
   l_clob     CLOB;
@@ -1103,7 +1103,7 @@ PROCEDURE get_activity
 ,p_get_stream          IN BOOLEAN 
 ,p_include_all_efforts IN BOOLEAN 
 ) IS
-  l_url      VARCHAR2(4000);
+  l_url      VARCHAR2(4000 CHAR);
   l_url_sep  VARCHAR2(1 CHAR) := '?';
   l_clob     CLOB;
   l_sigmatch BOOLEAN;
@@ -1203,7 +1203,7 @@ END get_activity;
 PROCEDURE get_activity_gpx
 (p_activity_id         activities.activity_id%TYPE
 ) IS
-  l_url    VARCHAR2(4000);
+  l_url    VARCHAR2(4000 CHAR);
   l_clob   CLOB;
   
   k_action CONSTANT VARCHAR2(64 CHAR) := 'get_activity_gpx';
@@ -1260,7 +1260,7 @@ END get_activity_stream_id;
 PROCEDURE get_activity_stream
 (p_activities IN OUT activities%ROWTYPE
 ) IS
-  l_url        VARCHAR2(4000);
+  l_url        VARCHAR2(4000 CHAR);
   l_clob       CLOB;
   l_gpx_clob   CLOB;
 
@@ -1430,7 +1430,7 @@ END get_activity_stream;
 PROCEDURE get_gear
 (p_gear_id  IN VARCHAR2
 ) IS
-  l_url      VARCHAR2(4000);
+  l_url      VARCHAR2(4000 CHAR);
   l_clob     CLOB;
 
   j_obj      JSON_OBJECT_T;
@@ -1529,7 +1529,7 @@ PROCEDURE renew_strava_tokens (p_force BOOLEAN) IS
   l_job_name CONSTANT VARCHAR2(128) := 'STRAVA.RENEW_STRAVA_TOKENS_JOB';
   l_renew      BOOLEAN := FALSE;
   
-  l_url        VARCHAR2(4000);
+  l_url        VARCHAR2(4000 CHAR);
   l_req        UTL_HTTP.req;
   l_resp       UTL_HTTP.resp;
   l_clob       CLOB;
@@ -1619,7 +1619,7 @@ END renew_strava_tokens;
 PROCEDURE update_strava_activity
 (p_activity_id IN activities.activity_id%TYPE
 ) IS
-  l_url         VARCHAR2(4000);
+  l_url         VARCHAR2(4000 CHAR);
   l_clob        CLOB;
   l_counter     INTEGER := 0;
 
@@ -1638,7 +1638,7 @@ BEGIN
   SELECT *
   INTO   r_activities
   FROM   activities
-  WHERE  processing_status = k4_status_areas_processed
+  WHERE  processing_status = k5_status_area_list_updated --was k4_status_areas_processed
   AND    activity_id = p_activity_id
   FOR UPDATE OF processing_status;
 
@@ -1674,9 +1674,6 @@ BEGIN
       --Parse JSON array
 
       j_obj := JSON_OBJECT_T.parse(l_clob);
-      --l_description := normalize_to_utf8(j_obj.get_string('description'));
-      --l_description := j_obj.get_string('description');
-
 	  --r_activities.processing_status := k5_status_area_list_updated;
       dbms_output.put_line('Warning: Updated description for activity '||activity_desc(r_activities)||' but still does not match');
 	  EXIT WHEN l_counter >= 1;
@@ -1686,10 +1683,8 @@ BEGIN
   
   UPDATE activities
   SET ROW = r_activities
-  --SET    description = r_activities.description
-  --,      processing_status = k6_status_description_updated
   WHERE  activity_id = p_activity_id
-  AND    processing_status = k4_status_areas_processed
+  AND    processing_status = k5_status_area_list_updated --was k4_status_areas_processed
   ;
 
   COMMIT;
@@ -1706,7 +1701,7 @@ END update_strava_activity;
 PROCEDURE create_webhook
 (p_callback_url CLOB
 ) IS
-  l_url      VARCHAR2(4000);
+  l_url      VARCHAR2(4000 CHAR);
   l_clob     CLOB;
 
   j_obj      JSON_OBJECT_T;

@@ -235,7 +235,7 @@ BEGIN
   RETURN l_geom;
 END polyline_to_geom;
 ----------------------------------------------------------------------------------------------------
--- look for activity id that is status k3 and generate new area list and update to status k4
+-- look for activity id that is status k3 and generate areas and update to status k4
 ----------------------------------------------------------------------------------------------------
 PROCEDURE activity_hsearch_upd
 (p_activity_id activities.activity_id%TYPE
@@ -348,7 +348,7 @@ PROCEDURE activity_area_list_upd
   l_description   activities.description%TYPE;
 
   e_activity_not_found EXCEPTION;
-  k_job_name CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.UPDATE_STRAVA_ACTIVTY_JOB';
+  k_job_name CONSTANT VARCHAR2(128 CHAR) := 'STRAVA.UPDATE_STRAVA_ACTIVTY_JOB'; --runs STRAVA_HTTP.BATCH_UPDATE_STRAVA_ACTIVITY
 
   l_module VARCHAR2(64 CHAR);
   l_action VARCHAR2(64 CHAR);  
@@ -356,13 +356,6 @@ BEGIN
   dbms_application_info.read_module(module_name=>l_module,action_name=>l_action);
   dbms_application_info.set_module(module_name=>k_module,action_name=>'activity_area_list_upd');
 
-  SELECT area_list, description
-  INTO   l_old_area_list, l_description
-  FROM   activities
-  WHERE  activity_id = p_activity_id
-  AND    processing_status = k4_status_areas_processed
-  FOR UPDATE OF processing_status;
-  
   --New Oracle 26 returning clause on MERGE
   --https://blog.sqlora.com/en/merge-and-dml-returning-clause-in-oracle-23ai/
   --https://connor-mcdonald.com/2025/09/18/merge-in-23ai-so-much-more-than-returning/
@@ -382,36 +375,18 @@ BEGIN
   ON (s.activity_id = u.activity_id)
   WHEN MATCHED THEN UPDATE 
   SET u.area_list = s.area_list
-  RETURNING new area_list
-  INTO l_new_area_list;
+  ,   u.processing_status = k5_status_area_list_updated --added 5.11.2026
+  RETURNING old area_list, new area_list
+  INTO l_old_area_list, l_new_area_list;
   
   IF SQL%ROWCOUNT = 0 OR l_new_area_list IS NULL THEN 
     RAISE e_activity_not_found;
   ELSE
-    NULL;
+    COMMIT;
     dbms_output.put_line('Updated activity '||p_activity_id||' area_list:'||l_new_area_list);
 	dbms_scheduler.run_job(job_name=>k_job_name, use_current_session=>FALSE);
   END IF;
 
-/*----------------------------------------------------------------------------------------------------
-  -- do not update the description here because we need check the description has not been changed by 
-  -- something else such as WindSock, so need to reread the description in directly before updating it
-  ----------------------------------------------------------------------------------------------------
-  update_activity_description(l_new_area_list,l_description);
-  UPDATE activities
-  SET    description = l_description
-  ,      processing_status = k5_status_area_list_updated
-  WHERE  activity_id = p_activity_id
-  AND    processing_status = k4_status_areas_processed;
-  
-  IF SQL%ROWCOUNT = 0 THEN 
-    RAISE e_activity_not_found;
-  ELSE
-    COMMIT;
-	dbms_scheduler.set_attribute(name => k_job_name, attribute => 'START_DATE',value => SYSTIMESTAMP AT TIME ZONE 'UTC');
-  END IF;
-  dbms_output.put_line('Updated activity '||p_activity_id||' area_list:'||l_new_area_list);
-  ----------------------------------------------------------------------------------------------------*/
   dbms_application_info.set_module(module_name=>l_module,action_name=>l_action);
 EXCEPTION 
   WHEN no_data_found THEN 
